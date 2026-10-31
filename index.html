@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08171d">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Una demostración interactiva del seguimiento del PSA con un caso clínico ficticio.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230b2526'/%3E%3Cpath d='M5 17h6l3-7 4 12 3-6h6' fill='none' stroke='%23a4f1d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <title>PSA · Una evolución, paso a paso</title>
+  <style>
+    /* Sistema visual: azul petróleo, menta y ámbar; Avenir/system; cristal y contraste alto. */
+    :root {
+      --ink:#f2f8f6; --muted:#a7bab9; --muted-strong:#c2d2ce; --bg:#071519;
+      --accent:#a4f1d4; --accent-ink:#092a25; --amber:#ffd291; --line:rgba(205,239,225,.13);
+      --glass:rgba(16,36,40,.72); --soft:rgba(226,255,242,.055); --shadow:0 24px 70px rgba(0,0,0,.22);
+      --display:'Avenir Next',Avenir,'Segoe UI',sans-serif; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    * { box-sizing:border-box; }
+    html { min-width:280px; background:var(--bg); scroll-behavior:smooth; }
+    body { margin:0; color:var(--ink); font-family:var(--display); -webkit-font-smoothing:antialiased; background:radial-gradient(ellipse 54rem 38rem at 90% -8%,rgba(58,141,111,.22),transparent 66%),radial-gradient(ellipse 40rem 32rem at -16% 42%,rgba(39,100,108,.15),transparent 67%),linear-gradient(155deg,#071519 0%,#0a191d 60%,#08151a 100%); }
+    body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.22; background-image:linear-gradient(rgba(207,255,235,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(207,255,235,.026) 1px,transparent 1px); background-size:72px 72px; mask-image:linear-gradient(to bottom,black,transparent 76%); }
+    button,input,summary { font:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible { outline:3px solid #d2ffe7; outline-offset:4px; }
+    button:disabled { cursor:not-allowed; opacity:.38; }
+    .wrap { width:min(100% - 40px,1120px); margin:0 auto; position:relative; }
+    .topbar { min-height:78px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); }
+    .brand { display:flex; align-items:center; gap:12px; color:var(--ink); font-weight:750; letter-spacing:-.025em; font-size:15px; }
+    .brand-mark { width:36px; height:36px; display:grid; place-items:center; color:var(--accent); border:1px solid rgba(164,241,212,.27); border-radius:12px; background:rgba(164,241,212,.08); box-shadow:inset 0 1px rgba(255,255,255,.08); }
+    .brand-mark svg { width:22px; height:22px; }
+    .brand span { display:block; line-height:1.15; }
+    .brand small { display:block; margin-top:3px; color:var(--muted); font-size:10px; font-weight:650; letter-spacing:.1em; text-transform:uppercase; }
+    .top-tag { display:flex; align-items:center; gap:8px; color:#c2d8cf; font-size:10px; font-weight:750; letter-spacing:.11em; text-transform:uppercase; }
+    .dot { width:7px; height:7px; flex:none; border-radius:50%; background:var(--accent); box-shadow:0 0 14px rgba(164,241,212,.75); }
+    .intro { display:flex; align-items:end; justify-content:space-between; gap:30px; padding:54px 0 32px; }
+    .eyebrow { display:flex; align-items:center; gap:10px; margin:0 0 16px; color:var(--accent); font-family:var(--mono); font-size:10px; font-weight:650; letter-spacing:.14em; text-transform:uppercase; }
+    .eyebrow::before { content:''; width:24px; height:1px; background:var(--accent); }
+    h1 { max-width:740px; margin:0; font-size:clamp(2.3rem,6.7vw,4.9rem); font-weight:650; line-height:1.02; letter-spacing:-.065em; }
+    h1 em { font-family:Georgia,'Iowan Old Style',serif; font-size:1.04em; color:var(--accent); font-weight:400; letter-spacing:-.055em; }
+    .intro-copy { max-width:355px; margin:0 0 4px; color:var(--muted-strong); font-size:15px; line-height:1.65; }
+    .layout { display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); gap:16px; align-items:start; }
+    .stack { display:grid; gap:16px; min-width:0; }
+    .glass { position:relative; min-width:0; overflow:hidden; border:1px solid var(--line); border-radius:24px; background:linear-gradient(140deg,rgba(30,61,59,.64),rgba(12,29,34,.76)); box-shadow:var(--shadow),inset 0 1px rgba(255,255,255,.05); -webkit-backdrop-filter:blur(22px); backdrop-filter:blur(22px); }
+    .glass::before { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(120deg,rgba(255,255,255,.055),transparent 35%); }
+    .panel { padding:25px; }
+    .case-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
+    .case-label,.section-label { margin:0; color:var(--muted); font-size:10px; font-weight:750; letter-spacing:.13em; text-transform:uppercase; }
+    .case-name { margin:8px 0 4px; font-size:20px; font-weight:700; letter-spacing:-.04em; }
+    .case-meta { margin:0; color:var(--muted-strong); font-size:12px; line-height:1.55; }
+    .case-chip { display:inline-flex; flex:none; align-items:center; gap:7px; padding:8px 10px; border:1px solid rgba(164,241,212,.18); border-radius:999px; color:var(--accent); background:rgba(116,228,181,.07); font-size:10px; font-weight:700; letter-spacing:.04em; }
+    .case-chip::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); }
+    .divider { height:1px; margin:23px 0; background:var(--line); }
+    .metric-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .control-id { color:var(--muted); font-family:var(--mono); font-size:11px; letter-spacing:.05em; }
+    .value-line { display:flex; align-items:baseline; gap:10px; margin-top:12px; }
+    .value { font-size:clamp(4rem,10vw,6rem); font-weight:620; line-height:.92; letter-spacing:-.08em; font-variant-numeric:tabular-nums; }
+    .unit { color:var(--muted); font-size:14px; font-weight:650; letter-spacing:.01em; }
+    .value-date { margin:12px 0 0; color:var(--muted-strong); font-size:13px; }
+    .signal { display:flex; gap:13px; align-items:flex-start; padding:16px; margin-top:25px; border:1px solid rgba(164,241,212,.14); border-radius:17px; background:rgba(129,231,190,.075); }
+    .signal[data-kind="rise"] { border-color:rgba(255,205,128,.25); background:rgba(226,164,74,.11); }
+    .signal-icon { width:32px; height:32px; display:grid; place-items:center; flex:none; color:var(--accent); border-radius:10px; background:rgba(164,241,212,.12); }
+    .signal[data-kind="rise"] .signal-icon { color:var(--amber); background:rgba(255,210,145,.12); }
+    .signal-icon svg { width:18px; height:18px; }
+    .signal-title { margin:0 0 5px; font-size:14px; font-weight:750; letter-spacing:-.015em; }
+    .signal-copy { margin:0; color:var(--muted-strong); font-size:12px; line-height:1.55; }
+    .metrics { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:17px; }
+    .small-metric { padding:14px; border:1px solid rgba(214,246,234,.08); border-radius:15px; background:rgba(255,255,255,.035); }
+    .small-metric dt { color:var(--muted); font-size:10px; line-height:1.35; }
+    .small-metric dd { margin:8px 0 0; font-family:var(--mono); font-size:15px; color:var(--ink); font-variant-numeric:tabular-nums; }
+    .small-metric dd span { color:var(--muted); font-family:var(--display); font-size:10px; }
+    .chart-head { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+    .chart-panel { display:flex; flex-direction:column; }
+    .chart-head { order:0; }
+    .timeline-head { order:1; }
+    .chart-panel .controls { order:2; }
+    .chart-panel .nav-foot { order:3; }
+    .chart-shell { order:4; }
+    h2 { margin:7px 0 0; font-size:20px; font-weight:690; letter-spacing:-.04em; }
+    .chart-date { max-width:160px; color:var(--muted-strong); font-size:11px; line-height:1.45; text-align:right; }
+    .chart-shell { position:relative; min-width:0; margin:22px 0 0; padding:14px 10px 5px; border:1px solid rgba(221,255,238,.08); border-radius:18px; background:rgba(5,20,23,.34); }
+    #chart { display:block; width:100%; height:auto; overflow:visible; }
+    .legend { display:flex; flex-wrap:wrap; gap:12px 20px; padding:7px 5px 10px; color:var(--muted-strong); font-size:10px; }
+    .legend span { display:inline-flex; gap:7px; align-items:center; }
+    .legend-dot { width:8px; height:8px; background:var(--accent); border-radius:50%; }
+    .legend-line { width:17px; height:0; border-top:1px dashed #e0a47c; }
+    .timeline-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:21px 0 11px; }
+    .timeline-head p { margin:0; color:var(--muted); font-size:11px; line-height:1.45; }
+    .controls { display:grid; grid-template-columns:1fr 1.3fr; gap:10px; }
+    .btn { min-height:50px; display:inline-flex; justify-content:center; align-items:center; gap:9px; padding:12px 15px; border:1px solid rgba(210,243,226,.15); border-radius:14px; color:var(--ink); background:rgba(255,255,255,.045); font-size:13px; font-weight:720; text-decoration:none; transition:transform .18s ease,background .18s ease,border-color .18s ease; }
+    .btn:not(:disabled):hover { transform:translateY(-1px); background:rgba(255,255,255,.09); }
+    .btn.primary { color:var(--accent-ink); background:linear-gradient(135deg,#bbf8dc,#79e6c2); border-color:transparent; box-shadow:0 8px 24px rgba(95,218,164,.14); }
+    .btn.primary:not(:disabled):hover { background:linear-gradient(135deg,#ceffe9,#8df0cf); }
+    .btn svg { width:16px; height:16px; flex:none; }
+    .nav-foot { min-height:18px; margin:11px 2px 0; color:var(--muted); font-size:11px; line-height:1.5; }
+    details { border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.025); }
+    details + details { margin-top:10px; }
+    summary { min-height:56px; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:15px 17px; cursor:pointer; list-style:none; font-weight:700; font-size:13px; }
+    summary::-webkit-details-marker { display:none; }
+    summary::after { content:'+'; display:grid; place-items:center; width:25px; height:25px; flex:none; border-radius:8px; color:var(--accent); background:rgba(164,241,212,.09); font-size:18px; font-weight:400; }
+    details[open] summary::after { content:'−'; }
+    .detail-body { padding:0 17px 17px; color:var(--muted-strong); font-size:12px; line-height:1.65; }
+    .detail-body p { margin:0 0 12px; }
+    .detail-body p:last-child { margin-bottom:0; }
+    .history { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+    .history th,.history td { text-align:left; padding:11px 0; border-top:1px solid var(--line); }
+    .history th { color:var(--muted); font-size:10px; font-weight:650; }
+    .history td:last-child,.history th:last-child { text-align:right; }
+    .history td:last-child { color:var(--ink); font-family:var(--mono); }
+    .history .new-value { color:var(--accent); font-size:10px; font-family:var(--display); }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:15px 0 12px; }
+    label { display:block; margin-bottom:7px; color:var(--muted-strong); font-size:11px; font-weight:700; }
+    input { width:100%; min-width:0; min-height:48px; padding:10px 12px; border:1px solid rgba(199,241,220,.18); border-radius:12px; color:var(--ink); background:#0a1b1e; font-size:16px; }
+    input::placeholder { color:#7d9791; }
+    .form-error { color:#ffd291; font-size:12px; }
+    .form-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .form-actions .btn { min-height:44px; }
+    .quiet-btn { min-height:44px; padding:8px 2px; border:0; color:var(--muted-strong); background:transparent; font-size:12px; font-weight:700; text-decoration:underline; text-underline-offset:4px; }
+    .footnote { display:flex; align-items:flex-start; gap:12px; margin:23px 0 32px; color:var(--muted); font-size:11px; line-height:1.65; }
+    .footnote svg { flex:none; width:17px; height:17px; margin-top:1px; color:var(--accent); }
+    .footer { display:flex; justify-content:space-between; gap:18px; padding:20px 0 calc(25px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); color:var(--muted); font-size:10px; letter-spacing:.025em; }
+    .footer a { color:var(--muted-strong); text-underline-offset:3px; }
+    .mobile-controls { display:none; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (max-width:780px) {
+      .wrap { width:min(100% - 32px,560px); }
+      .topbar { min-height:72px; }
+      .intro { display:block; padding:42px 0 25px; }
+      .intro-copy { margin-top:15px; font-size:14px; }
+      .layout { display:flex; flex-direction:column; align-items:stretch; gap:16px; }
+      .stack { display:contents; }
+      .case-panel { order:1; }
+      .chart-panel { order:2; }
+      .tools-panel { order:3; }
+      .footnote { order:4; }
+      .panel { padding:21px; }
+      .glass { border-radius:22px; }
+      .value { font-size:clamp(4.6rem,19vw,6.2rem); }
+      .chart-shell { margin-top:17px; }
+      #chart text { font-size:24px; }
+      .chart-panel .controls { display:none; }
+      .mobile-controls { position:fixed; z-index:10; left:50%; bottom:calc(10px + env(safe-area-inset-bottom)); transform:translateX(-50%); width:min(calc(100% - 32px),560px); display:grid; grid-template-columns:1fr 1.5fr; gap:8px; padding:8px; border:1px solid rgba(203,244,222,.18); border-radius:18px; background:rgba(10,28,30,.88); box-shadow:0 16px 42px rgba(0,0,0,.42); -webkit-backdrop-filter:blur(22px); backdrop-filter:blur(22px); }
+      .mobile-controls .btn { min-height:46px; }
+      .footer { flex-direction:column; gap:7px; padding-bottom:calc(105px + env(safe-area-inset-bottom)); }
+    }
+    @media (max-width:360px) {
+      .wrap { width:calc(100% - 24px); }
+      .topbar { min-height:62px; }
+      .intro { padding:28px 0 21px; }
+      .intro .eyebrow { margin-bottom:11px; }
+      .intro-copy { margin-top:11px; line-height:1.5; }
+      .panel { padding:17px; }
+      .case-panel .divider { margin:17px 0; }
+      .case-panel .value { font-size:4.4rem; }
+      .case-panel .signal { margin-top:17px; }
+      .top-tag { font-size:9px; }
+      .case-chip { padding:7px 8px; font-size:9px; }
+      .controls { grid-template-columns:1fr 1.2fr; }
+      .btn { padding:10px 8px; font-size:12px; }
+      .form-grid { grid-template-columns:1fr; }
+      .small-metric { padding:12px; }
+    }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 13h4l2.1-5.2 3.5 9 2.3-5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span>PSA <small>Seguimiento</small></span>
+      </div>
+      <div class="top-tag"><span class="dot"></span> Caso ficticio</div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div><p class="eyebrow">Una historia · control a control</p><h1 id="page-title">La evolución,<br><em>paso a paso.</em></h1></div>
+        <p class="intro-copy">Recorra el seguimiento de Juan N. y observe cuándo aparece una subida del PSA.</p>
+      </section>
+
+      <div class="layout">
+        <div class="stack">
+          <section class="glass panel case-panel" aria-labelledby="case-heading">
+            <div class="case-head">
+              <div><p class="case-label">El caso</p><h2 id="case-heading" class="case-name">Juan N.</h2><p class="case-meta">Prostatectomía radical<br>18 de diciembre de 2015</p></div>
+              <span class="case-chip">Ficticio</span>
+            </div>
+            <div class="divider"></div>
+            <div class="metric-top"><p class="section-label">PSA del control</p><span class="control-id" id="control-id">CONTROL 01</span></div>
+            <div class="value-line"><span id="current-value" class="value">—</span><span class="unit">ng/mL</span></div>
+            <p class="value-date" id="current-date">Cargando el caso…</p>
+            <div id="signal" class="signal" data-kind="start" role="status" aria-live="polite">
+              <span class="signal-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 15l4-4 3 3 7-7M15 7h4v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <div><p id="signal-title" class="signal-title">Inicio del seguimiento</p><p id="signal-copy" class="signal-copy">El primer control sirve como referencia.</p></div>
+            </div>
+            <dl class="metrics">
+              <div class="small-metric"><dt>Cambio frente al anterior</dt><dd id="delta-value">—</dd></div>
+              <div class="small-metric"><dt>Valor mínimo observado</dt><dd id="minimum-value">—</dd></div>
+            </dl>
+          </section>
+
+          <section class="glass panel tools-panel" aria-label="Más información y prueba">
+            <details id="history-details">
+              <summary>Ver controles disponibles</summary>
+              <div class="detail-body"><p>Solo se muestran los resultados conocidos hasta el control actual.</p><table class="history"><thead><tr><th scope="col">Fecha</th><th scope="col">PSA · ng/mL</th></tr></thead><tbody id="history-body"></tbody></table></div>
+            </details>
+            <details id="test-details">
+              <summary>Añadir un valor de prueba</summary>
+              <div class="detail-body">
+                <p>Experimente con cifras ficticias. Se conservan solo mientras esta página esté abierta.</p>
+                <form id="test-form" novalidate>
+                  <div class="form-grid">
+                    <div><label for="new-date">Fecha del control</label><input id="new-date" type="date" required></div>
+                    <div><label for="new-value">PSA · ng/mL</label><input id="new-value" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej.: 0,12" required></div>
+                  </div>
+                  <p id="form-error" class="form-error" role="alert" hidden></p>
+                  <div class="form-actions"><button class="btn primary" type="submit">Añadir control</button><button id="reset-tests" class="quiet-btn" type="button" hidden>Quitar valores de prueba</button></div>
+                </form>
+              </div>
+            </details>
+            <details>
+              <summary>Contexto del caso</summary>
+              <div class="detail-body"><p>Juan N. fue tratado con cirugía por un cáncer de próstata. El caso describe Gleason 4+4, ISUP 4, márgenes libres y ganglios sin afectación.</p><p>Antes de la operación el PSA era 15 ng/mL. La gráfica muestra exclusivamente el seguimiento posterior.</p><p id="source-note" hidden>El texto original llama «indetectable» al PSA del 30 de marzo de 2016; la gráfica lo rotula como 0,01 ng/mL.</p></div>
+            </details>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="glass panel chart-panel" aria-labelledby="chart-heading">
+            <div class="chart-head"><div><p class="section-label">Una lectura visual</p><h2 id="chart-heading">Evolución del PSA</h2></div><div class="chart-date" id="chart-date">Hasta el primer control</div></div>
+            <div class="chart-shell">
+              <svg id="chart" viewBox="0 0 640 300" role="img" aria-label="Gráfica de evolución del PSA"></svg>
+              <div class="legend"><span><i class="legend-dot" aria-hidden="true"></i> PSA registrado</span><span><i class="legend-line" aria-hidden="true"></i> Referencia del caso: 0,20</span></div>
+            </div>
+            <div class="timeline-head"><p>Avance o retroceda por los controles.</p><span id="current-step" class="control-id">01</span></div>
+            <div class="controls">
+              <button id="previous" class="btn" type="button" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Anterior</button>
+              <button id="next" class="btn primary" type="button">Siguiente control<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+            <p class="nav-foot" id="navigation-hint">Al avanzar verá únicamente la información disponible en cada control.</p>
+          </section>
+          <div class="footnote"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 10.5v5M12 7.5h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>La alerta señala una variación numérica para su revisión. No establece un diagnóstico ni sustituye la valoración clínica.</span></div>
+        </div>
+      </div>
+    </main>
+    <footer class="footer"><span>PSA · Seguimiento interactivo</span><span>Demostración docente con datos ficticios</span></footer>
+    <nav class="mobile-controls" aria-label="Navegación entre controles">
+      <button id="mobile-previous" class="btn" type="button" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Anterior</button>
+      <button id="mobile-next" class="btn primary" type="button">Siguiente control<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </nav>
+    <noscript>Active JavaScript para recorrer este caso interactivo.</noscript>
+  </div>
+
+  <script id="psa-core">
+    (function (root) {
+      'use strict';
+      const ORIGINAL = Object.freeze([
+        Object.freeze({ date:'2016-01-19', value:0.05 }),
+        Object.freeze({ date:'2016-03-30', value:0.01 }),
+        Object.freeze({ date:'2016-07-21', value:0.01 }),
+        Object.freeze({ date:'2016-11-09', value:0.02 }),
+        Object.freeze({ date:'2017-06-09', value:0.10 }),
+        Object.freeze({ date:'2017-10-09', value:0.25 }),
+        Object.freeze({ date:'2018-01-26', value:0.51 })
+      ]);
+      const REFERENCE = 0.20;
+      function validDate(value) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return false;
+        const d = new Date(value + 'T12:00:00Z');
+        return Number.isFinite(d.getTime()) && d.toISOString().slice(0,10) === value;
+      }
+      function parseValue(input) {
+        const raw = String(input == null ? '' : input).trim();
+        if (!/^\d+(?:[.,]\d{1,4})?$/.test(raw)) return null;
+        const n = Number(raw.replace(',','.'));
+        return Number.isFinite(n) && n >= 0 ? n : null;
+      }
+      function analyze(records, cutoff) {
+        if (!validDate(cutoff)) throw new Error('Fecha de evaluación no válida');
+        const visible = records.filter(r => validDate(r.date) && Number.isFinite(r.value) && r.value >= 0 && r.date <= cutoff)
+          .slice().sort((a,b) => a.date.localeCompare(b.date));
+        const last = visible.length ? visible[visible.length-1] : null;
+        const previous = visible.length > 1 ? visible[visible.length-2] : null;
+        const delta = previous ? Number((last.value-previous.value).toFixed(6)) : null;
+        const trend = delta === null ? 'start' : delta > 0 ? 'rise' : delta < 0 ? 'fall' : 'stable';
+        const minimum = visible.length ? Math.min(...visible.map(r => r.value)) : null;
+        return { visible, last, previous, delta, trend, minimum, atReference:!!last && last.value >= REFERENCE };
+      }
+      root.PSA_DEMO = Object.freeze({ ORIGINAL, REFERENCE, validDate, parseValue, analyze });
+    })(globalThis);
+  </script>
+  <script>
+    (function () {
+      'use strict';
+      const core = window.PSA_DEMO;
+      const $ = id => document.getElementById(id);
+      const number = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:4}).format(n);
+      const dateShort = iso => new Intl.DateTimeFormat('es-ES',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(iso+'T12:00:00Z')).replace(/\./g,'');
+      const dateLong = iso => new Intl.DateTimeFormat('es-ES',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(iso+'T12:00:00Z'));
+      let records = core.ORIGINAL.map(r => ({...r, original:true}));
+      let selected = 0;
+      let chartSequence = 0;
+      function sortRecords() { records.sort((a,b) => a.date.localeCompare(b.date)); }
+      function chartMarkup(result) {
+        const rows=result.visible, left=65, right=605, top=20, bottom=235, width=right-left, height=bottom-top;
+        const times=rows.map(r => Date.parse(r.date+'T12:00:00Z'));
+        const minTime=times[0], maxTime=times[times.length-1];
+        const maxData=Math.max(core.REFERENCE,...rows.map(r => r.value),.01);
+        const rough=maxData*1.2/5, magnitude=Math.pow(10,Math.floor(Math.log10(rough))), fraction=rough/magnitude;
+        const step=(fraction<=1?1:fraction<=2?2:fraction<=5?5:10)*magnitude;
+        const tickCount=Math.ceil(maxData*1.2/step), maxY=step*tickCount;
+        const x=i => rows.length===1 ? left+width/2 : left+(times[i]-minTime)/(maxTime-minTime)*width;
+        const y=v => bottom-(v/maxY)*height;
+        let grid='';
+        for (let i=0;i<=tickCount;i++) { const v=step*i, yy=y(v); grid+=`<line x1="${left}" y1="${yy}" x2="${right}" y2="${yy}" stroke="rgba(206,242,226,.11)"/><text x="${left-12}" y="${yy+4}" text-anchor="end" fill="#9ab4ab" font-size="12" font-family="system-ui">${number(v)}</text>`; }
+        const refY=y(core.REFERENCE);
+        const reference=`<line x1="${left}" y1="${refY}" x2="${right}" y2="${refY}" stroke="#e0a47c" stroke-opacity=".7" stroke-width="1.5" stroke-dasharray="5 7"/>`;
+        const coords=rows.map((r,i)=>[x(i),y(r.value)]);
+        const line=coords.map((p,i)=>`${i?'L':'M'} ${p[0]} ${p[1]}`).join(' ');
+        const area=rows.length>1 ? `${line} L ${coords[coords.length-1][0]} ${bottom} L ${coords[0][0]} ${bottom} Z` : '';
+        const gradient='chart-fill-'+(++chartSequence);
+        const circles=coords.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===coords.length-1?7:5}" fill="${i===coords.length-1?'#b7f9d9':'#79d8b4'}" stroke="#153735" stroke-width="3"/>`).join('');
+        const labelAt=(i,anchor)=>`<text x="${x(i)}" y="${bottom+28}" text-anchor="${anchor}" fill="#a5bcb5" font-size="12" font-family="system-ui">${dateShort(rows[i].date)}</text>`;
+        const dates=rows.length===1 ? labelAt(0,'middle') : labelAt(0,'start')+labelAt(rows.length-1,'end');
+        return `<defs><linearGradient id="${gradient}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8ff0c8" stop-opacity=".26"/><stop offset="100%" stop-color="#8ff0c8" stop-opacity="0"/></linearGradient></defs>${grid}${reference}${area?`<path d="${area}" fill="url(#${gradient})"/>`:''}<path d="${line}" fill="none" stroke="#a4f1d4" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${circles}${dates}<text x="${left}" y="12" fill="#9ab4ab" font-size="11" font-family="system-ui">ng/mL</text>`;
+      }
+      function render() {
+        sortRecords();
+        selected=Math.max(0,Math.min(selected,records.length-1));
+        const current=records[selected], result=core.analyze(records,current.date);
+        $('control-id').textContent='CONTROL '+String(selected+1).padStart(2,'0');
+        $('current-step').textContent=String(selected+1).padStart(2,'0');
+        $('current-value').textContent=number(result.last.value);
+        $('current-date').textContent=dateLong(result.last.date);
+        $('chart-date').textContent='Hasta el '+dateShort(result.last.date);
+        $('minimum-value').innerHTML=number(result.minimum)+' <span>ng/mL</span>';
+        $('delta-value').innerHTML=result.delta===null?'—':(result.delta>0?'+':'')+number(result.delta)+' <span>ng/mL</span>';
+        const signal=$('signal'); signal.dataset.kind=result.trend;
+        let title,copy;
+        if (result.trend==='start') { title='Inicio del seguimiento'; copy='Este primer resultado sirve como punto de partida.'; }
+        else if (result.trend==='rise') { title='Subida detectada'; copy=`El PSA pasa de ${number(result.previous.value)} a ${number(result.last.value)} ng/mL respecto al control anterior.`; }
+        else if (result.trend==='fall') { title='Descenso respecto al anterior'; copy=`El PSA pasa de ${number(result.previous.value)} a ${number(result.last.value)} ng/mL.`; }
+        else { title='Sin cambio respecto al anterior'; copy=`El PSA se mantiene en ${number(result.last.value)} ng/mL.`; }
+        if (result.atReference) copy+=' Alcanza la línea de referencia del caso (0,20 ng/mL).';
+        $('signal-title').textContent=title; $('signal-copy').textContent=copy;
+        $('chart').innerHTML=chartMarkup(result);
+        $('chart').setAttribute('aria-label',`Evolución del PSA con ${result.visible.length} ${result.visible.length===1?'control disponible':'controles disponibles'} hasta el ${dateLong(result.last.date)}. Último valor ${number(result.last.value)} nanogramos por mililitro.`);
+        $('history-body').innerHTML=result.visible.slice().reverse().map(r=>`<tr><td>${dateShort(r.date)}${r.original?'':' <span class="new-value">· prueba</span>'}</td><td>${number(r.value)}</td></tr>`).join('');
+        $('source-note').hidden=current.date<'2016-03-30';
+        $('previous').disabled=selected===0; $('next').disabled=selected===records.length-1;
+        $('mobile-previous').disabled=selected===0; $('mobile-next').disabled=selected===records.length-1;
+        $('navigation-hint').textContent=selected===records.length-1?'Ha llegado al último control disponible. Puede añadir un valor de prueba.':'Al avanzar verá únicamente la información disponible en cada control.';
+        $('reset-tests').hidden=!records.some(r=>!r.original);
+      }
+      function previous() { if(selected>0){selected--;render();} }
+      function next() { if(selected<records.length-1){selected++;render();} }
+      $('previous').addEventListener('click',previous); $('mobile-previous').addEventListener('click',previous);
+      $('next').addEventListener('click',next); $('mobile-next').addEventListener('click',next);
+      $('test-form').addEventListener('submit',event=>{
+        event.preventDefault();
+        const date=$('new-date').value, value=core.parseValue($('new-value').value), error=$('form-error');
+        let message='';
+        if (!core.validDate(date)) message='Introduzca una fecha válida.';
+        else if (date<=records[selected].date) message='Elija una fecha posterior al control que está viendo.';
+        else if (records.some(r=>r.date===date)) message='Ya existe un control en esa fecha. Elija otra fecha.';
+        else if (value===null) message='Introduzca una cifra no negativa, por ejemplo 0,12. Los valores con «<» no son cifras exactas.';
+        if(message){error.textContent=message;error.hidden=false;return;}
+        error.hidden=true; records.push({date,value,original:false}); sortRecords(); selected=records.findIndex(r=>r.date===date); $('new-value').value=''; $('new-date').value=''; render();
+      });
+      $('reset-tests').addEventListener('click',()=>{ const at=records[selected].date; records=records.filter(r=>r.original); selected=Math.max(0,records.reduce((last,r,i)=>r.date<=at?i:last,-1)); $('form-error').hidden=true; render(); });
+      render();
+    })();
+  </script>
+</body>
+</html>
