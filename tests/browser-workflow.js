@@ -9,14 +9,16 @@ async page => {
   const count = () => page.locator('#history-body tr').count();
   equal(await value(),'0,05','Primer control');
   equal(await count(),1,'Historial inicial');
-  equal(await page.locator('#source-note').isVisible(),false,'Nota futura oculta');
-  for (const expected of ['0,01','0,01','0,02']) {
+  equal(await page.locator('#source-note').getAttribute('hidden'),'','Nota futura oculta');
+  for (const [index,expected] of ['0,01','0,01','0,02'].entries()) {
     await page.locator('#mobile-next').click();
     equal(await value(),expected,'Avance cronológico');
+    if(index===0) equal(await page.locator('#source-note').getAttribute('hidden'),null,'Nota disponible desde su fecha');
   }
   equal(await date(),'9 de noviembre de 2016','Fecha del primer ascenso');
   equal(await page.locator('#signal-title').innerText(),'Subida detectada','Alerta de ascenso');
   equal(await count(),4,'Sin registros futuros en el historial');
+  if (/2017|2018/.test(await page.locator('#history-body').textContent())) throw new Error('El historial contiene fechas futuras');
   for (const expected of ['0,10','0,25','0,51']) {
     await page.locator('#mobile-next').click();
     equal(await value(),expected,'Control siguiente');
@@ -25,6 +27,7 @@ async page => {
   for(let i=0;i<3;i++) await page.locator('#mobile-previous').click();
   equal(await value(),'0,02','Retroceso al cuarto control');
   equal(await count(),4,'Retroceso sin datos futuros');
+  if (/2017|2018/.test(await page.locator('#history-body').textContent())) throw new Error('El retroceso conserva fechas futuras');
   await page.locator('#test-details summary').click();
   await page.locator('#new-date').fill('2016-12-10');
   await page.locator('#new-value').fill('<0,02');
