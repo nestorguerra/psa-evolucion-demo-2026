@@ -160,6 +160,12 @@
       .form-grid { grid-template-columns:1fr; }
       .small-metric { padding:12px; }
     }
+    @media (min-width:781px) and (max-height:500px) and (orientation:landscape) {
+      .chart-panel .controls { display:none; }
+      .mobile-controls { position:fixed; z-index:10; left:50%; bottom:calc(10px + env(safe-area-inset-bottom)); transform:translateX(-50%); width:min(calc(100% - 32px),560px); display:grid; grid-template-columns:1fr 1.5fr; gap:8px; padding:8px; border:1px solid rgba(203,244,222,.18); border-radius:18px; background:rgba(10,28,30,.88); box-shadow:0 16px 42px rgba(0,0,0,.42); -webkit-backdrop-filter:blur(22px); backdrop-filter:blur(22px); }
+      .mobile-controls .btn { min-height:46px; }
+      .footer { padding-bottom:calc(105px + env(safe-area-inset-bottom)); }
+    }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; } }
   </style>
 </head>
