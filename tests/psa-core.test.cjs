@@ -15,7 +15,9 @@ const rows = Array.from(core.ORIGINAL, x => ({...x}));
 
 assert.deepEqual(rows.map(x=>[x.date,x.value]), [
   ['2016-01-19',0.05],['2016-03-30',0.01],['2016-07-21',0.01],
-  ['2016-11-09',0.02],['2017-06-09',0.10],['2017-10-09',0.25],['2018-01-26',0.51]
+  ['2016-11-09',0.02],['2017-06-09',0.10],['2017-10-09',0.25],['2018-01-26',0.51],
+  ['2022-11-30',0.04],['2023-05-31',0.09],['2023-11-30',0.23],['2024-02-29',0.46],
+  ['2024-05-31',0.73],['2024-08-31',0.94],['2024-11-02',1.13]
 ], 'Los datos deben coincidir con el gráfico original');
 
 const beginning = core.analyze(rows,'2016-01-19');
@@ -46,6 +48,9 @@ assert.ok(!Array.from(afterThreshold.visible).some(r=>r.date==='2018-01-26'));
 const all = core.analyze(rows,'2018-01-26');
 assert.equal(all.last.value,0.51);
 assert.equal(all.visible.length,7);
+const later=core.analyze(rows,'2024-11-02');
+assert.equal(later.last.value,1.13,'Último valor cuantificado de la gráfica posterior');
+assert.equal(later.visible.length,14);
 
 const unsorted = [rows[6],rows[0],rows[3],rows[1]];
 const originalOrder = unsorted.map(r=>r.date).join('|');

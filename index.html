@@ -4,10 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#08171d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="PSA Seguimiento">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="color-scheme" content="dark">
   <meta name="description" content="Una demostración interactiva del seguimiento del PSA con un caso clínico ficticio.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230b2526'/%3E%3Cpath d='M5 17h6l3-7 4 12 3-6h6' fill='none' stroke='%23a4f1d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <title>PSA · Una evolución, paso a paso · v0.1</title>
+  <title>PSA · Seguimiento · v0.2</title>
   <style>
     /* Sistema visual: azul petróleo, menta y ámbar; Avenir/system; cristal y contraste alto. */
     :root {
@@ -189,6 +194,45 @@
       .mobile-controls .btn { min-height:46px; }
       .footer { padding-bottom:calc(105px + env(safe-area-inset-bottom)); }
     }
+    /* Navegación de aplicación: pantallas, controles táctiles y zonas seguras. */
+    .wrap { padding-top:env(safe-area-inset-top); }
+    .topbar { min-height:68px; }
+    .header-actions { display:flex; align-items:center; gap:12px; }
+    .install-button { min-height:40px; padding:8px 12px; border:1px solid var(--line); border-radius:12px; color:var(--accent); background:rgba(164,241,212,.07); font-size:11px; font-weight:700; }
+    .intro { padding:28px 0 20px; }
+    .intro h1 { font-size:clamp(1.9rem,4vw,3rem); }
+    .intro .eyebrow { margin-bottom:8px; }
+    .intro-copy { font-size:13px; }
+    body:not([data-view="seguimiento"]) .intro { display:none; }
+    body:not([data-view="seguimiento"]) .layout { margin-top:20px; }
+    .layout { display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); }
+    .stack { display:contents; }
+    .case-panel { grid-column:1; }
+    .chart-panel { grid-column:2; }
+    .tools-panel,.clinical-panel,.sources-panel { grid-column:1 / -1; }
+    .app-tabs { position:fixed; z-index:20; left:50%; bottom:0; transform:translateX(-50%); width:min(100%,600px); display:grid; grid-template-columns:repeat(4,1fr); gap:3px; padding:7px 10px calc(7px + env(safe-area-inset-bottom)); border:1px solid rgba(203,244,222,.18); border-bottom:0; border-radius:20px 20px 0 0; background:rgba(9,27,30,.96); box-shadow:0 -12px 36px rgba(0,0,0,.3); -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px); }
+    .app-tab { min-width:0; min-height:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border:0; border-radius:13px; color:var(--muted); background:transparent; font-size:10px; font-weight:700; }
+    .app-tab svg { width:20px; height:20px; }
+    .app-tab[aria-current="page"] { color:var(--accent); background:rgba(164,241,212,.09); }
+    .footer { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
+    .sources-panel a { color:var(--accent); }
+    .form-section { grid-column:1 / -1; margin:12px 0 0; color:var(--accent); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+    .app-note { padding:12px 14px; margin:14px 0; border:1px solid var(--line); border-radius:14px; color:var(--muted-strong); background:rgba(255,255,255,.035); font-size:12px; line-height:1.5; }
+    .case-panel .value.value-compact { font-size:clamp(1.65rem,7vw,2.4rem); letter-spacing:-.035em; }
+    .context-jump { margin:0 0 16px; width:100%; }
+    dialog { width:min(92vw,430px); padding:24px; border:1px solid var(--line); border-radius:24px; color:var(--ink); background:#10282b; box-shadow:var(--shadow); }
+    dialog::backdrop { background:rgba(0,0,0,.7); }
+    dialog h2 { margin-top:0; } dialog p { color:var(--muted-strong); font-size:13px; line-height:1.6; }
+    @media (max-width:780px) {
+      .intro { padding:24px 0 18px; }
+      .intro-copy { margin-top:8px; font-size:12px; }
+      .layout { display:flex; }
+      .mobile-controls { position:static; transform:none; width:100%; display:grid; grid-template-columns:1fr 1.5fr; gap:8px; margin-top:18px; padding:0; border:0; background:transparent; box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; }
+      .mobile-controls .btn { min-height:48px; }
+      .footer { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
+    }
+    @media (max-width:360px) { .form-section { grid-column:auto; } .header-actions { gap:6px; } .install-button { padding:7px 8px; } }
+    @media (min-width:781px) { .mobile-controls { display:none; } .chart-panel .controls { display:grid; } }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; } }
   </style>
 </head>
@@ -199,18 +243,18 @@
         <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 13h4l2.1-5.2 3.5 9 2.3-5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <span>PSA <small>Seguimiento</small></span>
       </div>
-      <div class="top-tag"><span class="dot"></span> Caso ficticio · v0.1</div>
+      <div class="header-actions"><button id="install-button" class="install-button" type="button">Añadir al móvil</button><div class="top-tag"><span class="dot"></span> Ficticio · v0.2</div></div>
     </header>
 
     <main>
       <section class="intro" aria-labelledby="page-title">
-        <div><p class="eyebrow">Una historia · control a control</p><h1 id="page-title">La evolución,<br><em>paso a paso.</em></h1></div>
-        <p class="intro-copy">Recorra el seguimiento de Juan N. y explore cómo el PSA y el contexto clínico ayudan a orientar la conversación.</p>
+        <div><p class="eyebrow">Una historia · control a control</p><h1 id="page-title">La evolución, <em>paso a paso.</em></h1></div>
+        <p class="intro-copy">Un caso ficticio para explorar la evolución del PSA y conversar sobre sus opciones.</p>
       </section>
 
       <div class="layout">
         <div class="stack">
-          <section class="glass panel case-panel" aria-labelledby="case-heading">
+          <section class="glass panel case-panel" data-app-view="seguimiento" aria-labelledby="case-heading">
             <div class="case-head">
               <div><p class="case-label">El caso</p><h2 id="case-heading" class="case-name">Juan N.</h2><p class="case-meta">Prostatectomía radical<br>18 de diciembre de 2015</p></div>
               <span class="case-chip">Ficticio</span>
@@ -225,14 +269,20 @@
             </div>
             <dl class="metrics">
               <div class="small-metric"><dt>Cambio frente al anterior</dt><dd id="delta-value">—</dd></div>
-              <div class="small-metric"><dt>Valor mínimo observado</dt><dd id="minimum-value">—</dd></div>
+              <div class="small-metric"><dt>Mínimo cuantificado</dt><dd id="minimum-value">—</dd></div>
             </dl>
+            <nav class="mobile-controls" aria-label="Navegación entre controles">
+              <button id="mobile-previous" class="btn" type="button" disabled>Anterior</button>
+              <button id="mobile-next" class="btn primary" type="button">Siguiente control <span aria-hidden="true">→</span></button>
+            </nav>
           </section>
 
-          <section class="glass panel tools-panel" aria-label="Más información y prueba">
-            <details id="history-details">
+          <section class="glass panel tools-panel" data-app-view="controles" aria-label="Más información y prueba" hidden>
+            <div class="clinical-head"><div><p class="section-label">Datos de la demostración</p><h2>Controles ficticios</h2></div></div>
+            <p class="clinical-intro">Añada un control para probar la aplicación. Los datos se conservan solo durante esta sesión.</p>
+            <details id="history-details" open>
               <summary>Ver controles disponibles</summary>
-              <div class="detail-body"><p>Solo se muestran los resultados conocidos hasta el control actual.</p><table class="history"><thead><tr><th scope="col">Fecha</th><th scope="col">PSA · ng/mL</th></tr></thead><tbody id="history-body"></tbody></table></div>
+              <div class="detail-body"><p>Solo se muestran los resultados conocidos hasta el control actual.</p><p id="unquantified-note" hidden>Los resultados descritos como indetectables sin cifra exacta no se convierten en números.</p><table class="history"><thead><tr><th scope="col">Fecha</th><th scope="col">PSA · ng/mL</th></tr></thead><tbody id="history-body"></tbody></table></div>
             </details>
             <details id="test-details">
               <summary>Añadir un valor de prueba</summary>
@@ -250,18 +300,23 @@
             </details>
             <details>
               <summary>Contexto del caso</summary>
-              <div class="detail-body"><p>Juan N. fue tratado con cirugía por un cáncer de próstata. El caso describe Gleason 4+4, ISUP 4, márgenes libres y ganglios sin afectación.</p><p>Antes de la operación el PSA era 15 ng/mL. La gráfica muestra exclusivamente el seguimiento posterior.</p><p id="source-note" hidden>El texto original llama «indetectable» al PSA del 30 de marzo de 2016; la gráfica lo rotula como 0,01 ng/mL.</p></div>
+              <div class="detail-body"><p>Juan N. fue tratado con cirugía por un cáncer de próstata. El caso describe Gleason 4+4, ISUP 4, márgenes libres y ganglios sin afectación.</p><p>Antes de la operación el PSA era 15 ng/mL. La gráfica muestra exclusivamente el seguimiento posterior.</p><p id="source-note" hidden>El texto original llama «indetectable» al PSA del 30 de marzo de 2016; la gráfica lo rotula como 0,01 ng/mL.</p><p id="case-therapy-note" hidden>El caso original comunica radioterapia entre mayo y junio de 2018 y tratamiento hormonal posterior. Los resultados indetectables sin cifra exacta se conservan como descripción, no como números.</p></div>
+            </details>
+            <details id="later-stage-details">
+              <summary>Etapa posterior · revelar</summary>
+              <div class="detail-body"><p>Esta sección muestra información posterior a la gráfica. Ábrala cuando corresponda en la discusión del caso ficticio.</p><p>La presentación comunica tratamiento hormonal y enzalutamida desde enero de 2025. Los controles del 5 de marzo y del 10 de octubre de 2025 se describen como <strong>PSA &lt;0,01 ng/mL</strong>.</p><p>Un valor expresado como «menor que» no es una cifra exacta y no se incorpora automáticamente a la gráfica ni al cálculo.</p></div>
             </details>
           </section>
         </div>
 
         <div class="stack">
-          <section class="glass panel chart-panel" aria-labelledby="chart-heading">
+          <section class="glass panel chart-panel" data-app-view="seguimiento" aria-labelledby="chart-heading">
             <div class="chart-head"><div><p class="section-label">Una lectura visual</p><h2 id="chart-heading">Evolución del PSA</h2></div><div class="chart-date" id="chart-date">Hasta el primer control</div></div>
             <div class="chart-shell">
               <svg id="chart" viewBox="0 0 640 300" role="img" aria-label="Gráfica de evolución del PSA"></svg>
-              <div class="legend"><span><i class="legend-dot" aria-hidden="true"></i> PSA registrado</span><span><i class="legend-line" aria-hidden="true"></i> Referencia del caso: 0,20</span></div>
+              <div class="legend"><span><i class="legend-dot" aria-hidden="true"></i> PSA registrado</span><span><i class="legend-line" aria-hidden="true"></i> Referencia del caso: 0,20</span><span id="treatment-legend" hidden><i class="legend-line" aria-hidden="true"></i> Tratamiento de 2018</span></div>
             </div>
+            <p class="app-note" id="phase-note" hidden>El caso comunica tratamiento en 2018. La gráfica separa las fases y omite los valores indetectables sin cifra exacta.</p>
             <div class="timeline-head"><p>Avance o retroceda por los controles.</p><span id="current-step" class="control-id">01</span></div>
             <div class="controls">
               <button id="previous" class="btn" type="button" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Anterior</button>
@@ -269,48 +324,71 @@
             </div>
             <p class="nav-foot" id="navigation-hint">Al avanzar verá únicamente la información disponible en cada control.</p>
           </section>
-          <section class="glass panel clinical-panel" aria-labelledby="clinical-heading">
-            <div class="clinical-head"><div><p class="section-label">De la evolución a la discusión</p><h2 id="clinical-heading">Riesgo y opciones</h2></div><span class="version-chip">v0.1</span></div>
+          <section class="glass panel clinical-panel" data-app-view="valoracion" aria-labelledby="clinical-heading" hidden>
+            <div class="clinical-head"><div><p class="section-label">De la evolución a la discusión</p><h2 id="clinical-heading">Riesgo y opciones</h2></div><span class="version-chip">v0.2</span></div>
             <p class="clinical-intro">Una lectura docente del caso tras prostatectomía. Distinguimos la señal de PSA, el riesgo y las opciones que puede valorar el especialista.</p>
+            <p class="app-note" id="clinical-cutoff">Valoración del control seleccionado.</p>
+            <button id="open-clinical" class="btn context-jump" type="button">Completar datos del escenario ↓</button>
             <div class="clinical-results" aria-live="polite">
               <div class="clinical-result" id="recurrence-card" data-state="pending"><h3>01 · Señal de recidiva</h3><strong id="recurrence-title">Pendiente de datos</strong><p id="recurrence-copy"></p></div>
-              <div class="clinical-result" id="risk-card" data-state="pending"><h3>02 · Riesgo EAU</h3><strong id="risk-title">Pendiente de valoración</strong><p id="risk-copy"></p><p class="clinical-detail" id="doubling-copy"></p></div>
-              <div class="clinical-result" id="options-card" data-state="pending"><h3>03 · Opciones para debatir</h3><strong id="options-title">Complete el contexto</strong><p id="options-copy"></p><ul id="options-list" hidden></ul><p class="clinical-detail" id="options-detail"></p><p class="clinical-detail">NCCN 4.2026 · La versión completa vigente está pendiente de contraste.</p></div>
+              <div class="clinical-result" id="risk-card" data-state="pending"><h3>02 · Riesgo EAU</h3><strong id="risk-title">Pendiente de valoración</strong><p id="risk-copy"></p><p class="clinical-detail" id="doubling-copy"></p><p class="clinical-detail" id="case-reported-dt" hidden>El caso original comunica un PSA-DT de 8 meses en noviembre de 2024. No se utiliza automáticamente.</p></div>
+              <div class="clinical-result" id="options-card" data-state="pending"><h3>03 · Opciones para debatir</h3><strong id="options-title">Complete el contexto</strong><p id="options-copy"></p><ul id="options-list" hidden></ul><p class="clinical-detail" id="options-detail"></p><p class="clinical-detail">NCCN 1.2027 · La versión completa más reciente no está confirmada.</p></div>
             </div>
             <details id="clinical-context">
               <summary>Ajustar datos clínicos ficticios</summary>
               <div class="detail-body">
                 <p>El grado ISUP y el dato de PSA indetectable proceden del caso. Los demás campos se dejan sin completar hasta que el especialista los aporte.</p>
                 <div class="clinical-form">
+                  <p class="form-section">El caso y el momento</p>
+                  <div class="full"><label for="clinical-scenario">Contexto para la valoración</label><select id="clinical-scenario"><option value="case">Datos del caso original</option><option value="hypothetical">Escenario alternativo ficticio</option></select><p class="form-hint">Los datos alternativos no forman parte del relato original.</p></div>
                   <div><label for="clinical-isup">ISUP patológico</label><select id="clinical-isup"><option value="unknown">No consta</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>4 · dato del caso</option><option value="5">5</option></select></div>
                   <div><label for="clinical-baseline">PSA indetectable tras cirugía</label><select id="clinical-baseline"><option value="case">Según el caso</option><option value="confirmed">Confirmado con fecha</option><option value="unknown">No consta</option><option value="persistent">Persistencia comunicada</option></select></div>
                   <div id="baseline-date-field" hidden><label for="clinical-baseline-date">Fecha de confirmación</label><input id="clinical-baseline-date" type="date"></div>
+                  <div id="persistence-field" hidden><label for="clinical-persistence">Persistencia documentada entre 6 y 12 semanas</label><select id="clinical-persistence"><option value="unknown">No consta</option><option value="yes">Sí, comunicada por especialista</option><option value="no">No confirmada</option></select></div>
                   <div class="full"><label for="clinical-date">Fecha de la valoración adicional</label><input id="clinical-date" type="date"><button class="quiet-btn" id="use-control-date" type="button">Usar la fecha del control actual</button><p class="form-hint">Los datos siguientes solo se aplican desde esta fecha. Puede dejarlos en «No consta».</p></div>
                   <div><label for="clinical-order">Momento de la recidiva</label><select id="clinical-order"><option value="unknown">No consta</option><option value="first">Primera</option><option value="second">Segunda</option></select></div>
                   <div id="second-date-field" hidden><label for="clinical-second-date">Segunda recidiva confirmada desde</label><input id="clinical-second-date" type="date"><p class="form-hint">Dato aportado por el especialista; no se infiere de la primera señal.</p></div>
+                  <div><label for="clinical-life">Esperanza de vida estimada</label><select id="clinical-life"><option value="unknown">No consta</option><option value="over5">Más de 5 años</option><option value="upto5">5 años o menos</option></select><p class="form-hint">Estimación comunicada; la aplicación no la calcula.</p></div>
+                  <p class="form-section">Tratamientos y fase del PSA</p>
                   <div><label for="clinical-prior-rt">Radioterapia previa</label><select id="clinical-prior-rt"><option value="unknown">No consta</option><option value="no">No</option><option value="yes">Sí</option></select></div>
-                  <div><label for="clinical-stage">Estadificación por imagen</label><select id="clinical-stage"><option value="unknown">No consta</option><option value="m0">M0 en imagen convencional</option><option value="m1">M1 confirmado</option><option value="uncertain">M0 / M1 incierto</option></select></div>
+                  <div><label for="clinical-other-treatment">Otros tratamientos tras la cirugía</label><select id="clinical-other-treatment"><option value="unknown">No consta</option><option value="no">No</option><option value="yes">Sí</option></select></div>
+                  <div><label for="clinical-phase">Serie utilizada para PSA-DT</label><select id="clinical-phase"><option value="case">Serie original del caso</option><option value="selected">Fase delimitada por especialista</option><option value="unknown">No consta</option></select><p class="form-hint">Los controles añadidos o tratamientos previos requieren delimitar una fase o aportar un PSA-DT validado.</p></div>
+                  <div id="phase-date-field" hidden><label for="clinical-phase-date">Inicio de la fase seleccionada</label><input id="clinical-phase-date" type="date"><p class="form-hint">Si hubo tratamiento, indique un día posterior al último cambio.</p></div>
+                  <div id="phase-confirm-field" hidden><label for="clinical-phase-confirm">Misma fase clínica</label><select id="clinical-phase-confirm"><option value="unknown">No consta</option><option value="yes">Confirmada por especialista</option></select></div>
+                  <div id="treatment-type-field" hidden><label for="clinical-treatment-type">Último cambio de tratamiento</label><select id="clinical-treatment-type"><option value="unknown">No consta</option><option value="radiotherapy">Radioterapia</option><option value="hormonal">Tratamiento hormonal</option><option value="combined">Tratamiento combinado</option><option value="other">Otro tratamiento</option></select></div>
+                  <div id="treatment-date-field" hidden><label for="clinical-treatment-date">Fecha del último cambio</label><input id="clinical-treatment-date" type="date"></div>
+                  <div><label for="clinical-psadt">PSA-DT informado · meses</label><input id="clinical-psadt" type="text" inputmode="decimal" autocomplete="off" placeholder="Opcional, ej.: 8"><p class="form-hint">Un dato validado para este control sustituye la estimación.</p></div>
+                  <p class="form-section">Imagen y contexto clínico</p>
+                  <div><label for="clinical-stage">Metástasis a distancia</label><select id="clinical-stage"><option value="unknown">No consta</option><option value="m0">M0 comunicado</option><option value="m1">M1 confirmado</option><option value="uncertain">M0 / M1 incierto</option></select></div>
+                  <div><label for="clinical-node">Ganglios regionales</label><select id="clinical-node"><option value="unknown">No consta</option><option value="n0">N0 comunicado</option><option value="n1">cN1 comunicado</option><option value="uncertain">Resultado incierto</option></select></div>
+                  <div><label for="clinical-imaging">Tipo de imagen disponible</label><select id="clinical-imaging"><option value="unknown">No consta</option><option value="conventional">Convencional</option><option value="psma">PET-PSMA</option><option value="both">Convencional y PET-PSMA</option></select><p class="form-hint">La imagen convencional incluye TC o RM y gammagrafía según corresponda.</p></div>
+                  <div id="pet-field" hidden><label for="clinical-pet">Resultado PET-PSMA</label><select id="clinical-pet"><option value="unknown">No consta</option><option value="negative">Sin lesiones comunicadas</option><option value="regional">Afectación regional comunicada</option><option value="suspected">Lesión dudosa</option><option value="distant">M1 comunicado</option></select></div>
+                  <div id="extent-field" hidden><label for="clinical-extent">Extensión comunicada</label><select id="clinical-extent"><option value="unknown">No consta</option><option value="oligo">Oligometastásica</option><option value="poly">Polimetastásica</option></select></div>
+                  <div id="timing-field" hidden><label for="clinical-timing">Momento de la extensión</label><select id="clinical-timing"><option value="unknown">No consta</option><option value="metachronous">Metacrónica comunicada</option><option value="synchronous">Sincrónica comunicada</option></select></div>
                   <div><label for="clinical-hormone">Sensibilidad hormonal</label><select id="clinical-hormone"><option value="unknown">No consta</option><option value="sensitive">Hormonosensible confirmada</option><option value="resistant">Resistencia confirmada</option></select></div>
                   <div><label for="clinical-salvage">Candidato a radioterapia de rescate</label><select id="clinical-salvage"><option value="unknown">No consta</option><option value="yes">Sí, según especialista</option><option value="no">No, según especialista</option></select></div>
-                  <div><label for="clinical-psadt">PSA-DT informado · meses</label><input id="clinical-psadt" type="text" inputmode="decimal" autocomplete="off" placeholder="Opcional, ej.: 8"><p class="form-hint">Si se aporta, se usa desde la fecha de valoración; si no, se estima con la serie disponible.</p></div>
+                  <div><label for="clinical-pelvic">Candidato a tratamiento dirigido a la pelvis</label><select id="clinical-pelvic"><option value="unknown">No consta</option><option value="yes">Sí, según especialista</option><option value="no">No, según especialista</option></select><p class="form-hint">Es un criterio distinto de la radioterapia de rescate.</p></div>
                 </div>
                 <p id="clinical-form-error" class="form-error" role="status" hidden></p>
               </div>
             </details>
-            <details class="clinical-sources">
-              <summary>Fuentes y límites</summary>
-              <div class="detail-body"><p>EAU cáncer de próstata 2026, tabla 6.4.1 y sección 6.4; NCCN próstata versión 4.2026, PROS-9 a PROS-12. Existe documentación posterior de NCCN: la versión completa actual queda pendiente de contraste.</p><p>Las opciones NCCN se distinguen de las indicaciones autorizadas en Europa. Consulta de <a href="https://cima.aemps.es/cima/dochtml/ft/113846002/FT_113846002.html" target="_blank" rel="noopener noreferrer">ficha de enzalutamida en AEMPS</a>.</p><p>Simulación docente con datos ficticios. No es una herramienta clínica validada y no establece diagnósticos ni tratamientos.</p></div>
-            </details>
           </section>
-          <div class="footnote"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 10.5v5M12 7.5h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>La alerta señala una variación numérica para su revisión. No establece un diagnóstico ni sustituye la valoración clínica.</span></div>
+          <section class="glass panel sources-panel" data-app-view="fuentes" aria-labelledby="sources-heading" hidden>
+            <p class="section-label">Trazabilidad y límites</p><h2 id="sources-heading">Fuentes</h2>
+            <div class="app-note">Demostración docente con datos ficticios. No es una herramienta clínica validada ni establece diagnósticos o tratamientos.</div>
+            <div class="detail-body"><p><strong>EAU 2026:</strong> sección 6.4 y tabla 6.4.1, para la clasificación EAU tras cirugía.</p><p><strong>NCCN 1.2027:</strong> PROS-9, PROS-9A y PROS-11 a PROS-15A. No se ha confirmado si es la versión completa más reciente.</p><p><strong>AEMPS:</strong> la indicación europea es distinta de una recomendación NCCN o de los criterios de un ensayo. <a href="https://cima.aemps.es/cima/dochtml/ft/113846002/FT_113846002.html" target="_blank" rel="noopener noreferrer">Ficha de enzalutamida</a>.</p><p>Los valores introducidos se pierden al cerrar o recargar la aplicación.</p><p id="offline-status" role="status">Comprobando disponibilidad sin conexión…</p></div>
+          </section>
         </div>
       </div>
     </main>
-    <footer class="footer"><span>PSA · Seguimiento interactivo · v0.1</span><span>Demostración docente con datos ficticios</span></footer>
-    <nav class="mobile-controls" aria-label="Navegación entre controles">
-      <button id="mobile-previous" class="btn" type="button" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Anterior</button>
-      <button id="mobile-next" class="btn primary" type="button">Siguiente control<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <footer class="footer"><span>PSA · Seguimiento interactivo · v0.2</span><span>Demostración docente con datos ficticios</span></footer>
+    <nav class="app-tabs" aria-label="Pantallas de la aplicación">
+      <button class="app-tab" type="button" data-view="seguimiento" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 13h4l2-5 4 9 2-5h6"/></svg>Seguimiento</button>
+      <button class="app-tab" type="button" data-view="valoracion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 18V6m0 12h16M8 14l3-4 3 2 5-6"/></svg>Valoración</button>
+      <button class="app-tab" type="button" data-view="controles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h8M17 15v6m-3-3h6"/></svg>Controles</button>
+      <button class="app-tab" type="button" data-view="fuentes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H7a2 2 0 0 1-2-2V4Zm0 13a2 2 0 0 1 2-2h12M9 8h6"/></svg>Fuentes</button>
     </nav>
+    <dialog id="install-dialog" aria-labelledby="install-heading"><h2 id="install-heading">Añadir al móvil</h2><p>En iPhone, abra esta aplicación en Safari y toque <strong>Compartir → Añadir a pantalla de inicio</strong>. Si aparece, active <strong>Abrir como app web</strong> y toque Añadir.</p><p>En Android, abra el menú del navegador y elija <strong>Instalar aplicación</strong> o <strong>Añadir a pantalla de inicio</strong>.</p><p>Después de añadirla, ábrala una vez desde el icono con conexión. En «Fuentes» puede comprobar si está preparada para usarse sin conexión.</p><button id="install-native" class="btn primary" type="button" hidden>Instalar ahora</button> <button id="close-install" class="btn" type="button">Cerrar</button></dialog>
     <noscript>Active JavaScript para recorrer este caso interactivo.</noscript>
   </div>
 
@@ -324,7 +402,14 @@
         Object.freeze({ date:'2016-11-09', value:0.02 }),
         Object.freeze({ date:'2017-06-09', value:0.10 }),
         Object.freeze({ date:'2017-10-09', value:0.25 }),
-        Object.freeze({ date:'2018-01-26', value:0.51 })
+        Object.freeze({ date:'2018-01-26', value:0.51 }),
+        Object.freeze({ date:'2022-11-30', value:0.04 }),
+        Object.freeze({ date:'2023-05-31', value:0.09 }),
+        Object.freeze({ date:'2023-11-30', value:0.23 }),
+        Object.freeze({ date:'2024-02-29', value:0.46 }),
+        Object.freeze({ date:'2024-05-31', value:0.73 }),
+        Object.freeze({ date:'2024-08-31', value:0.94 }),
+        Object.freeze({ date:'2024-11-02', value:1.13 })
       ]);
       const REFERENCE = 0.20;
       function validDate(value) {
@@ -403,8 +488,8 @@
             return { possible:false, state:'pending', title:'Falta la fecha de valoración',
               copy:'La persistencia comunicada solo se aplica cuando consta una fecha de valoración hasta el control seleccionado.', baselineDate:null };
           }
-          return { possible:false, state:'review', title:'Persistencia comunicada',
-            copy:'La persistencia del PSA requiere valoración especializada. No se clasifica aquí como recidiva tras un PSA indetectable.', baselineDate:null };
+          return { possible:false, kind:'persistence', state:'review', title:'Persistencia comunicada',
+            copy:context.persistence==='yes' ? 'El especialista comunica persistencia en la ventana de 6 a 12 semanas. Requiere valoración; no se clasifica aquí como recidiva tras PSA indetectable.' : 'Confirme con el especialista si la persistencia se documentó entre 6 y 12 semanas. La aplicación no la deduce de una sola cifra.', baselineDate:null };
         }
         if (!baselineDate || baselineDate > cutoff) {
           return { possible:false, state:'pending', title:'Falta el dato basal',
@@ -431,10 +516,11 @@
             copy:'En los controles disponibles no se identifica todavía una señal por los criterios seleccionados. Una subida aislada no confirma una recidiva.', baselineDate };
         }
         const triggerDate=trigger.date.split('-').reverse().join('/');
-        return { possible:true, state:'review', title:'Señal compatible con recidiva',
+        const caseNote=context.baseline==='case' && cutoff>='2017-10-09' ? ' El caso comunica la recidiva el 09/10/2017; una señal anterior no equivale a esa confirmación.' : '';
+        return { possible:true, kind:'recurrence', state:'review', title:'Señal compatible con recidiva',
           copy:trigger.reason==='threshold'
-            ? 'En el historial, desde el '+triggerDate+' consta un ascenso del PSA por encima de 0,1 ng/mL. La situación actual y la confirmación corresponden al especialista.'
-            : 'En el historial, desde el '+triggerDate+' constan dos aumentos consecutivos del PSA. La situación actual y la confirmación corresponden al especialista.',
+            ? 'En el historial, desde el '+triggerDate+' consta un ascenso del PSA por encima de 0,1 ng/mL. La situación actual y la confirmación corresponden al especialista.'+caseNote
+            : 'En el historial, desde el '+triggerDate+' constan dos aumentos consecutivos del PSA. La situación actual y la confirmación corresponden al especialista.'+caseNote,
           baselineDate, triggerDate:trigger.date, reason:trigger.reason };
       }
       function eauRisk(signal, isup, doubling, second) {
@@ -457,52 +543,73 @@
         return { state,title,copy };
       }
       function managementOptions(signal, cutoff, result, context, doubling, contextAvailable, secondConfirmed, errors) {
-        if (!signal.possible) return { state:'pending', title:'Aún sin una señal de recidiva',
-          copy:'Las vías de manejo se muestran cuando hay una señal o una segunda recidiva comunicada y contexto suficiente.', items:[], detail:'' };
         if (errors.length) return { state:'pending', title:'Revise los datos introducidos', copy:errors[0], items:[], detail:'' };
+        const persistence=signal.kind==='persistence' && context.persistence==='yes';
+        if (!signal.possible && !persistence) return { state:'pending', title:signal.kind==='persistence' ? 'Falta confirmar la persistencia' : 'Aún sin una señal de recidiva',
+          copy:signal.kind==='persistence' ? 'Confirme la persistencia comunicada en la ventana posoperatoria para explorar PROS-9.' : 'Las vías se muestran cuando hay una señal o una segunda recidiva comunicada y contexto suficiente.', items:[], detail:'' };
         if (!contextAvailable) return { state:'pending', title:'Complete el contexto',
           copy:'Para orientar la discusión se necesitan la fecha de valoración, el momento de la recidiva y la información clínica correspondiente.', items:[], detail:'' };
         if (context.assessmentDate!==cutoff) return { state:'pending', title:'Actualice la valoración',
           copy:'Confirme los datos clínicos para el control actual antes de mostrar las opciones.', items:[], detail:'' };
         if (context.order==='second' && !secondConfirmed) return { state:'pending', title:'Falta confirmar la segunda recidiva',
           copy:'Indique la fecha comunicada por el especialista. La primera señal del historial no demuestra por sí sola una segunda recidiva.', items:[], detail:'' };
-        if (context.stage==='uncertain') return { state:'review', title:'Estadificación pendiente',
-          copy:'Una lesión sospechosa no confirma por sí sola enfermedad M1. Revise el estudio completo y el escenario con el especialista.', items:[],
-          detail:'Las vías M0 y M1 se valoran después de aclarar la imagen y el resto del contexto.' };
+        if (persistence && context.order!=='first') return { state:'pending', title:'Revise el momento',
+          copy:'La persistencia comunicada se explora en la vía inicial; una segunda recidiva necesita confirmación independiente.', items:[], detail:'' };
+        if (context.hormone==='resistant') return { state:'review', title:'Requiere una vía específica',
+          copy:'La enfermedad resistente a la castración requiere su propio análisis; esta v0.2 no calcula esa vía.', items:[], detail:'La resistencia no se deduce automáticamente de una subida de PSA.' };
+        if (context.order==='first' && context.life==='upto5') return { state:'review', title:'NCCN PROS-9 · observación',
+          copy:'Con una esperanza de vida comunicada de 5 años o menos, la guía contempla observación y seguimiento.',
+          items:['Valorar observación según la situación y las preferencias de la persona.'], detail:'La estimación la aporta el especialista; la aplicación no calcula pronósticos.' };
+        const usesPet=['psma','both'].includes(context.imaging);
+        if (context.stage==='uncertain' || context.node==='uncertain' || (usesPet && context.pet==='suspected')) return { state:'review', title:'Estadificación pendiente',
+          copy:'Un hallazgo dudoso no confirma por sí solo enfermedad regional o M1. Revise las imágenes con el especialista.', items:[],
+          detail:'No se selecciona una vía hasta aclarar la estadificación.' };
+        if (usesPet && ((context.stage==='m0' && context.pet==='distant') || (context.node==='n0' && context.pet==='regional'))) return { state:'review', title:'Revise las imágenes',
+          copy:'Los datos de imagen comunicados necesitan una interpretación conjunta antes de situar el escenario.', items:[], detail:'Una técnica puede mostrar hallazgos distintos; la aplicación no los reconcilia automáticamente.' };
         const missing=[];
         if (!['first','second'].includes(context.order)) missing.push('momento de la recidiva');
+        if (context.order==='first' && !['over5','upto5'].includes(context.life)) missing.push('esperanza de vida comunicada');
         if (!['yes','no'].includes(context.priorRT)) missing.push('radioterapia previa');
+        if (!['yes','no'].includes(context.otherTreatment)) missing.push('otros tratamientos');
         if (!['m0','m1'].includes(context.stage)) missing.push('estadificación');
+        if (!['conventional','psma','both'].includes(context.imaging)) missing.push('tipo de imagen');
+        if (['psma','both'].includes(context.imaging) && !['negative','regional','distant'].includes(context.pet)) missing.push('resultado PET-PSMA');
+        if (context.stage==='m0' && !['n0','n1'].includes(context.node)) missing.push('estado ganglionar');
         if (!['sensitive','resistant'].includes(context.hormone)) missing.push('sensibilidad hormonal');
-        if (context.stage==='m0' && !['yes','no'].includes(context.salvage)) missing.push('posibilidad de rescate');
+        if ((context.stage==='m1' || (context.stage==='m0' && context.node==='n1')) && !['oligo','poly'].includes(context.extent)) missing.push('extensión comunicada');
+        if ((context.stage==='m1' || (context.stage==='m0' && context.node==='n1')) && !['metachronous','synchronous'].includes(context.timing)) missing.push('momento de la extensión');
+        if (context.stage==='m0' && context.node==='n0' && !['yes','no'].includes(context.salvage)) missing.push('posibilidad de rescate');
         if (missing.length) return { state:'pending', title:'Faltan datos para situar el escenario',
           copy:'Pendiente: '+missing.join(', ')+'.', items:[], detail:'No se infieren datos de imagen, tratamientos ni sensibilidad hormonal.' };
-        if (context.hormone==='resistant') return { state:'review', title:'Requiere una vía específica',
-          copy:'La enfermedad resistente a la castración requiere su propio análisis; esta v0.1 no calcula esa vía.', items:[], detail:'La resistencia no se deduce automáticamente de una subida de PSA.' };
-        if (context.stage==='m1') return { state:'review', title:'Si se confirma la recidiva · escenario M1',
-          copy:'Con hormonosensibilidad confirmada, la elección depende de la extensión, los tratamientos previos y la valoración clínica.',
-          items:['Valorar tratamiento sistémico con deprivación androgénica y una intensificación apropiada; enzalutamida es una de las opciones contempladas en su indicación europea.'],
-          detail:'No se selecciona un fármaco ni una pauta automáticamente. Revisar las fichas europeas y los criterios completos.' };
-        if (context.order==='first' && context.priorRT==='no' && context.salvage==='yes') {
-          return { state:'review', title:'Si se confirma primera recidiva M0',
-            copy:'En un escenario seleccionado tras cirugía pueden valorarse distintas vías con el especialista.',
-            items:['Valorar radioterapia de rescate, con o sin tratamiento hormonal según los factores clínicos.','Considerar seguimiento en situaciones seleccionadas.'],
-            detail:'La decisión depende, entre otros datos, de las expectativas de vida, la localización y los tratamientos previos.' };
+        if (context.stage==='m0' && context.imaging==='psma') return { state:'pending', title:'Imagen convencional pendiente',
+          copy:'Para los criterios de EMBARK y la vía que explora esta demostración se necesita conocer también la imagen convencional.', items:[], detail:'No se infiere M0 convencional de un PET-PSMA aislado.' };
+        if (context.stage==='m0' && context.node==='n1' && (context.extent!=='oligo' || context.timing!=='metachronous')) return { state:'pending', title:'Revise la extensión ganglionar',
+          copy:'La situación cN1M0 necesita valoración especializada para seleccionar la vía correspondiente.', items:[], detail:'La aplicación no deduce la extensión a partir de N1.' };
+        if (context.extent==='oligo' && context.timing==='metachronous' && (context.stage==='m1' || context.node==='n1')) return { state:'review', title:'NCCN PROS-13 · escenario oligometastásico',
+          copy:'En un escenario metacrónico confirmado, la guía contempla valorar terapia dirigida a lesiones, con o sin deprivación androgénica, u otras vías aplicables.',
+          items:['Discutir la posibilidad de tratamiento dirigido y la estrategia sistémica con el especialista.'], detail:'La extensión y el carácter metacrónico deben confirmarse; no se selecciona un tratamiento automáticamente.' };
+        if (context.stage==='m1') return { state:'review', title:'NCCN PROS-14/15 · escenario M1',
+          copy:'La estrategia sistémica depende de la extensión, el momento de aparición, los tratamientos previos y la valoración clínica.',
+          items:['Valorar deprivación androgénica e intensificación adecuada.','AEMPS: enzalutamida con deprivación androgénica figura entre las opciones de su indicación para enfermedad metastásica hormonosensible.'],
+          detail:'Revisar ficha técnica, contraindicaciones y criterios completos; no se selecciona una pauta.' };
+        const trial=Number.isFinite(doubling.value) && doubling.value<=9 && result.last && result.last.value>=1 && context.salvage==='no';
+        if (context.order==='first') {
+          const items=context.priorRT==='no' && context.salvage==='yes'
+            ? ['NCCN PROS-9: valorar radioterapia como opción preferida, con o sin deprivación androgénica según el caso.','Considerar seguimiento en situaciones seleccionadas.']
+            : ['NCCN PROS-9: revisar la posibilidad de tratamiento local y valorar seguimiento según el contexto.'];
+          if (trial) items.push('AEMPS / EMBARK: algunos datos coinciden con el escenario estudiado; revise la indicación y todos los criterios. Esta mención no es una vía específica de enzalutamida en PROS-9.');
+          return { state:'review', title:'NCCN PROS-9 · vía inicial N0M0',
+            copy:'La persistencia o primera recidiva requieren interpretación y decisión del especialista.', items,
+            detail:'El grupo EAU no equivale a los criterios NCCN, al ensayo ni a la indicación europea. Ninguna coincidencia parcial confirma elegibilidad.' };
         }
-        if (context.priorRT==='yes' || context.order==='second' || context.salvage==='no') {
-          const items=['Valorar seguimiento o tratamiento sistémico según la situación clínica y los criterios de las guías.'];
-          const embark=Number.isFinite(doubling.value) && doubling.value<=9 && result.last && result.last.value>=1 && context.salvage==='no';
-          if (embark) items.push('Los datos introducidos coinciden con varios criterios del estudio EMBARK: valorar enzalutamida con o sin deprivación androgénica únicamente tras revisar todos los criterios y la ficha técnica.');
-          return { state:'review', title:'Si se confirma · escenario M0',
-            copy:'La historia terapéutica, la posibilidad real de rescate y el contexto clínico requieren revisión especializada.',
-            items, detail:embark
-              ? 'Coincidir con estos datos no confirma la elegibilidad. La ficha europea prioriza la combinación salvo riesgo o toxicidad inaceptables de la deprivación androgénica; revise la ficha y el contexto completo.'
-              : 'Para valorar las opciones del estudio EMBARK faltan o no coinciden algunos de los datos mostrados; la ausencia de coincidencia no determina por sí sola el tratamiento.' };
-        }
-        return { state:'review', title:'Si se confirma · valoración M0',
-          copy:'La posibilidad de rescate y el contexto clínico deben revisarse antes de seleccionar una vía.',
-          items:['Valorar seguimiento o una estrategia de rescate o sistémica según corresponda.'],
-          detail:'La guía NCCN consultada es la versión 4.2026; debe contrastarse con la versión completa vigente.' };
+        const items=['NCCN PROS-12: valorar seguimiento o deprivación androgénica según riesgo y contexto.'];
+        if (trial && context.pelvic==='no') items.push('NCCN PROS-12: enzalutamida con leuprolida figura como opción de categoría 1 en el escenario especificado, tras revisar todos los criterios.');
+        if (trial) items.push('AEMPS / EMBARK: algunos datos coinciden con el escenario estudiado; revisar indicación, tratamientos previos y ficha técnica.');
+        return { state:'review', title:'NCCN PROS-12 · segunda recidiva N0M0',
+          copy:'La estratificación NCCN y los criterios del ensayo son distintos del grupo EAU.', items,
+          detail:trial && context.pelvic!=='no'
+            ? 'La vía NCCN de enzalutamida requiere comprobar además la posibilidad de tratamiento dirigido a la pelvis; una respuesta sobre radioterapia no la sustituye.'
+            : 'La coincidencia con estos datos no confirma elegibilidad. La ficha europea prioriza la combinación salvo toxicidad o riesgo inaceptables de la deprivación androgénica.' };
       }
       function evaluateClinical(records, cutoff, context) {
         if (!validDate(cutoff)) throw new Error('Fecha de evaluación no válida');
@@ -512,13 +619,15 @@
         const assessmentDate=context.assessmentDate || '';
         const hasContextDate=validDate(assessmentDate) && assessmentDate>=SURGERY_DATE;
         const contextAvailable=hasContextDate && assessmentDate<=cutoff;
-        const additional=['order','priorRT','stage','hormone','salvage'].some(k=>context[k] && context[k]!=='unknown') || String(context.manualDT || '').trim()!=='';
+        const additional=['order','life','priorRT','otherTreatment','stage','node','imaging','pet','extent','timing','hormone','salvage','pelvic'].some(k=>context[k] && context[k]!=='unknown') || context.phase==='selected' || String(context.manualDT || '').trim()!=='';
         if (baseline==='confirmed' && (!validDate(context.baselineDate) || context.baselineDate<SURGERY_DATE)) errors.push('Indique una fecha válida de PSA indetectable posterior a la cirugía.');
         if (baseline==='persistent' && !hasContextDate) errors.push('Indique una fecha válida para la persistencia comunicada.');
         if (additional && !hasContextDate) errors.push('Indique una fecha válida para la valoración adicional.');
+        if (contextAvailable && context.scenario!=='hypothetical' && assessmentDate>='2018-05-14' && context.priorRT==='no') errors.push('El caso original comunica radioterapia desde mayo de 2018. Revise el dato o seleccione un escenario alternativo ficticio.');
+        if (contextAvailable && context.scenario!=='hypothetical' && assessmentDate>='2019-04-30' && context.otherTreatment==='no') errors.push('El caso original comunica tratamiento hormonal, con última dosis en abril de 2019. Revise el dato o seleccione un escenario alternativo ficticio.');
         const rawDT=String(context.manualDT == null ? '' : context.manualDT).trim(), parsedDT=rawDT ? parseValue(rawDT) : null;
         if (rawDT && (parsedDT===null || parsedDT<=0)) errors.push('Indique un PSA-DT positivo de hasta 1.000.000 meses, límite técnico de la demostración.');
-        const baselineContext={baseline,baselineDate:context.baselineDate,assessmentDate};
+        const baselineContext={baseline,baselineDate:context.baselineDate,assessmentDate,persistence:context.persistence};
         let signal=recurrenceSignal(result.visible,cutoff,baselineContext);
         if (additional && contextAvailable && signal.baselineDate && assessmentDate<signal.baselineDate) errors.push('La valoración adicional no puede ser anterior al dato basal de PSA indetectable.');
         let secondConfirmed=false;
@@ -528,7 +637,7 @@
             errors.push('La fecha de la segunda recidiva debe ser válida y no posterior a la valoración.');
           } else if (context.secondDate<=cutoff) {
             secondConfirmed=true;
-            signal={possible:true,state:'review',title:'Segunda recidiva comunicada',
+            signal={possible:true,kind:'recurrence',state:'review',title:'Segunda recidiva comunicada',
               copy:'Se usa el dato comunicado por el especialista desde la fecha indicada. No se deduce de la primera señal de PSA.',
               baselineDate:signal.baselineDate};
           }
@@ -537,8 +646,21 @@
         if (rawDT && (parsedDT===null || parsedDT<=0 || !hasContextDate)) doubling={value:null,state:'invalid',count:0};
         else if (rawDT && contextAvailable && assessmentDate===cutoff) doubling={value:parsedDT,state:'reported',count:0};
         else if (rawDT && contextAvailable) doubling={value:null,state:'stale',count:0};
-        else if (contextAvailable && context.priorRT==='yes') doubling={value:null,state:'phase',count:0};
-        else doubling=estimateDoubling(records,cutoff,signal.baselineDate);
+        else {
+          const phase=context.phase || 'case';
+          const originalOnly=result.visible.every(r=>ORIGINAL.some(o=>o.date===r.date && o.value===r.value));
+          const undatedTreatment=!hasContextDate && (context.priorRT==='yes' || context.otherTreatment==='yes');
+          const caseAllowed=phase==='case' && cutoff<='2018-01-26' && originalOnly && !undatedTreatment && !(contextAvailable && (context.priorRT==='yes' || context.otherTreatment==='yes'));
+          if (caseAllowed) doubling=estimateDoubling(records,cutoff,signal.baselineDate);
+          else if (phase==='selected' && contextAvailable && assessmentDate===cutoff) {
+            const start=context.phaseDate, treatmentKnown=['yes','no'].includes(context.priorRT) && ['yes','no'].includes(context.otherTreatment);
+            const hadTreatment=context.priorRT==='yes' || context.otherTreatment==='yes';
+            const treatmentDateValid=!hadTreatment || (['radiotherapy','hormonal','combined','other'].includes(context.treatmentType) && validDate(context.treatmentDate) && context.treatmentDate>=SURGERY_DATE && context.treatmentDate<start);
+            if (!treatmentKnown || context.phaseConfirm!=='yes' || !validDate(start) || start<SURGERY_DATE || start>cutoff || (signal.baselineDate && start<signal.baselineDate) || !treatmentDateValid) {
+              doubling={value:null,state:'phase',count:0};
+            } else doubling=estimateDoubling(records,cutoff,start);
+          } else doubling={value:null,state:'phase',count:0};
+        }
         const risk=eauRisk(signal,context.isup,doubling,secondConfirmed);
         const options=managementOptions(signal,cutoff,result,context,doubling,contextAvailable,secondConfirmed,errors);
         return { signal,risk,doubling,options,errors,contextAvailable,secondConfirmed };
@@ -560,36 +682,62 @@
       function sortRecords() { records.sort((a,b) => a.date.localeCompare(b.date)); }
       function clinicalContext() {
         return {
+          scenario:$('clinical-scenario').value,
           isup:$('clinical-isup').value,
           baseline:$('clinical-baseline').value,
           baselineDate:$('clinical-baseline-date').value,
+          persistence:$('clinical-persistence').value,
           assessmentDate:$('clinical-date').value,
           order:$('clinical-order').value,
           secondDate:$('clinical-second-date').value,
+          life:$('clinical-life').value,
           priorRT:$('clinical-prior-rt').value,
+          otherTreatment:$('clinical-other-treatment').value,
+          phase:$('clinical-phase').value,
+          phaseDate:$('clinical-phase-date').value,
+          phaseConfirm:$('clinical-phase-confirm').value,
+          treatmentType:$('clinical-treatment-type').value,
+          treatmentDate:$('clinical-treatment-date').value,
           stage:$('clinical-stage').value,
+          node:$('clinical-node').value,
+          imaging:$('clinical-imaging').value,
+          pet:$('clinical-pet').value,
+          extent:$('clinical-extent').value,
+          timing:$('clinical-timing').value,
           hormone:$('clinical-hormone').value,
           salvage:$('clinical-salvage').value,
+          pelvic:$('clinical-pelvic').value,
           manualDT:$('clinical-psadt').value
         };
       }
       function renderClinical(current) {
         const context=clinicalContext(), result=core.evaluateClinical(records,current.date,context);
+        $('clinical-cutoff').textContent='Control seleccionado: '+dateLong(current.date)+'. '+(context.scenario==='hypothetical' ? 'Escenario alternativo ficticio.' : 'Contexto del caso original.');
         $('baseline-date-field').hidden=context.baseline!=='confirmed';
+        $('persistence-field').hidden=context.baseline!=='persistent';
         $('second-date-field').hidden=context.order!=='second';
+        $('phase-date-field').hidden=context.phase!=='selected';
+        $('phase-confirm-field').hidden=context.phase!=='selected';
+        const hasTreatment=context.priorRT==='yes' || context.otherTreatment==='yes';
+        $('treatment-type-field').hidden=context.phase!=='selected' || !hasTreatment;
+        $('treatment-date-field').hidden=context.phase!=='selected' || !hasTreatment;
+        $('pet-field').hidden=!['psma','both'].includes(context.imaging);
+        $('extent-field').hidden=!(context.stage==='m1' || (context.stage==='m0' && context.node==='n1'));
+        $('timing-field').hidden=$('extent-field').hidden;
         $('recurrence-card').dataset.state=result.signal.state;
         $('recurrence-title').textContent=result.signal.title;
         $('recurrence-copy').textContent=result.signal.copy;
         $('risk-card').dataset.state=result.risk.state;
         $('risk-title').textContent=result.risk.title;
         $('risk-copy').textContent=result.risk.copy;
+        $('case-reported-dt').hidden=context.scenario==='hypothetical' || current.date<'2024-11-02';
         const dt=result.doubling;
         let doublingText;
         if (dt.state==='estimated') doublingText='PSA-DT estimado: '+core.formatDoubling(dt.value)+' meses, con '+dt.count+' valores positivos disponibles en los últimos 12 meses. Regresión logarítmica; requiere revisión.'+(dt.excludedZeros ? ' Se han excluido valores cero.' : '');
         else if (dt.state==='reported') doublingText='PSA-DT informado: '+core.formatDoubling(dt.value)+' meses. El dato y su método deben revisarse con el especialista.';
         else if (dt.state==='interval') doublingText='PSA-DT no estimado: hay controles separados por menos de cuatro semanas. Puede aportar un dato validado.';
         else if (dt.state==='nonrising') doublingText='PSA-DT no estimable con la serie seleccionada: la pendiente logarítmica no es ascendente.';
-        else if (dt.state==='phase') doublingText='Con radioterapia previa, revise la fase de las mediciones y aporte, si procede, un PSA-DT validado.';
+        else if (dt.state==='phase') doublingText='PSA-DT pendiente: delimite y confirme una fase sin mezclar tratamientos, o aporte un valor validado para este control.';
         else if (dt.state==='stale') doublingText='El PSA-DT informado corresponde a una valoración anterior. Confírmelo para el control actual antes de utilizarlo.';
         else if (dt.state==='invalid') doublingText='El PSA-DT informado necesita una cifra positiva y una fecha de valoración válida.';
         else doublingText='PSA-DT pendiente: se necesitan al menos tres valores positivos adecuados en los últimos 12 meses.';
@@ -622,13 +770,16 @@
         const refY=y(core.REFERENCE);
         const reference=`<line x1="${left}" y1="${refY}" x2="${right}" y2="${refY}" stroke="#e0a47c" stroke-opacity=".7" stroke-width="1.5" stroke-dasharray="5 7"/>`;
         const coords=rows.map((r,i)=>[x(i),y(r.value)]);
-        const line=coords.map((p,i)=>`${i?'L':'M'} ${p[0]} ${p[1]}`).join(' ');
-        const area=rows.length>1 ? `${line} L ${coords[coords.length-1][0]} ${bottom} L ${coords[0][0]} ${bottom} Z` : '';
+        const breakIndex=rows.findIndex((r,i)=>i>0 && rows[i-1].date<'2018-05-14' && r.date>='2018-05-14');
+        const line=coords.map((p,i)=>`${i===0 || i===breakIndex?'M':'L'} ${p[0]} ${p[1]}`).join(' ');
+        const area=rows.length>1 && breakIndex<0 ? `${line} L ${coords[coords.length-1][0]} ${bottom} L ${coords[0][0]} ${bottom} Z` : '';
+        const treatmentX=breakIndex>0 ? left+(Date.parse('2018-05-14T12:00:00Z')-minTime)/(maxTime-minTime)*width : null;
+        const treatment=treatmentX===null ? '' : `<line x1="${treatmentX}" y1="${top}" x2="${treatmentX}" y2="${bottom}" stroke="#e0a47c" stroke-opacity=".6" stroke-width="1.5" stroke-dasharray="3 6"/>`;
         const gradient='chart-fill-'+(++chartSequence);
         const circles=coords.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===coords.length-1?7:5}" fill="${i===coords.length-1?'#b7f9d9':'#79d8b4'}" stroke="#153735" stroke-width="3"/>`).join('');
         const labelAt=(i,anchor)=>`<text x="${x(i)}" y="${bottom+28}" text-anchor="${anchor}" fill="#a5bcb5" font-size="12" font-family="system-ui">${dateShort(rows[i].date)}</text>`;
         const dates=rows.length===1 ? labelAt(0,'middle') : labelAt(0,'start')+labelAt(rows.length-1,'end');
-        return `<defs><linearGradient id="${gradient}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8ff0c8" stop-opacity=".26"/><stop offset="100%" stop-color="#8ff0c8" stop-opacity="0"/></linearGradient></defs>${grid}${reference}${area?`<path d="${area}" fill="url(#${gradient})"/>`:''}<path d="${line}" fill="none" stroke="#a4f1d4" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${circles}${dates}<text x="${left}" y="12" fill="#9ab4ab" font-size="11" font-family="system-ui">ng/mL</text>`;
+        return `<defs><linearGradient id="${gradient}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8ff0c8" stop-opacity=".26"/><stop offset="100%" stop-color="#8ff0c8" stop-opacity="0"/></linearGradient></defs>${grid}${reference}${treatment}${area?`<path d="${area}" fill="url(#${gradient})"/>`:''}<path d="${line}" fill="none" stroke="#a4f1d4" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${circles}${dates}<text x="${left}" y="12" fill="#9ab4ab" font-size="11" font-family="system-ui">ng/mL</text>`;
       }
       function render() {
         sortRecords();
@@ -637,13 +788,16 @@
         $('control-id').textContent='CONTROL '+String(selected+1).padStart(2,'0');
         $('current-step').textContent=String(selected+1).padStart(2,'0');
         $('current-value').textContent=number(result.last.value);
+        $('current-value').classList.toggle('value-compact',number(result.last.value).length>7);
         $('current-date').textContent=dateLong(result.last.date);
         $('chart-date').textContent='Hasta el '+dateShort(result.last.date);
         $('minimum-value').innerHTML=number(result.minimum)+' <span>ng/mL</span>';
-        $('delta-value').innerHTML=result.delta===null?'—':(result.delta>0?'+':'')+number(result.delta)+' <span>ng/mL</span>';
+        const crossesTreatment=!!result.previous && result.previous.date<'2018-05-14' && result.last.date>='2018-05-14';
+        $('delta-value').innerHTML=crossesTreatment?'No comparable':result.delta===null?'—':(result.delta>0?'+':'')+number(result.delta)+' <span>ng/mL</span>';
         const signal=$('signal'); signal.dataset.kind=result.trend;
         let title,copy;
-        if (result.trend==='start') { title='Inicio del seguimiento'; copy='Este primer resultado sirve como punto de partida.'; }
+        if (crossesTreatment) { title='Cambio de fase'; copy='Entre estos controles el caso comunica tratamiento. La comparación directa necesita revisión.'; }
+        else if (result.trend==='start') { title='Inicio del seguimiento'; copy='Este primer resultado sirve como punto de partida.'; }
         else if (result.trend==='rise') { title='Subida detectada'; copy=`El PSA pasa de ${number(result.previous.value)} a ${number(result.last.value)} ng/mL respecto al control anterior.`; }
         else if (result.trend==='fall') { title='Descenso respecto al anterior'; copy=`El PSA pasa de ${number(result.previous.value)} a ${number(result.last.value)} ng/mL.`; }
         else { title='Sin cambio respecto al anterior'; copy=`El PSA se mantiene en ${number(result.last.value)} ng/mL.`; }
@@ -653,6 +807,13 @@
         $('chart').setAttribute('aria-label',`Evolución del PSA con ${result.visible.length} ${result.visible.length===1?'control disponible':'controles disponibles'} hasta el ${dateLong(result.last.date)}. Último valor ${number(result.last.value)} nanogramos por mililitro.`);
         $('history-body').innerHTML=result.visible.slice().reverse().map(r=>`<tr><td>${dateShort(r.date)}${r.original?'':' <span class="new-value">· prueba</span>'}</td><td>${number(r.value)}</td></tr>`).join('');
         $('source-note').hidden=current.date<'2016-03-30';
+        $('unquantified-note').hidden=current.date<'2018-05-31';
+        const treatmentNote=$('case-therapy-note');
+        treatmentNote.hidden=current.date<'2018-05-14';
+        if (!treatmentNote.hidden) treatmentNote.textContent=current.date<'2018-06-26' ? 'El caso original comunica el inicio de radioterapia el 14 de mayo de 2018.' : current.date<'2019-04-30' ? 'El caso original comunica radioterapia entre mayo y junio de 2018.' : 'El caso original comunica radioterapia entre mayo y junio de 2018 y tratamiento hormonal con última dosis en abril de 2019. Los resultados indetectables sin cifra exacta no se convierten en números.';
+        $('phase-note').hidden=current.date<'2018-05-14';
+        if (!$('phase-note').hidden) $('phase-note').textContent=current.date<'2018-05-31' ? 'El caso comunica tratamiento en 2018. La gráfica separa las fases.' : 'El caso comunica tratamiento en 2018. La gráfica separa las fases y omite los valores indetectables sin cifra exacta.';
+        $('treatment-legend').hidden=!result.visible.some((r,i)=>i>0 && result.visible[i-1].date<'2018-05-14' && r.date>='2018-05-14');
         $('previous').disabled=selected===0; $('next').disabled=selected===records.length-1;
         $('mobile-previous').disabled=selected===0; $('mobile-next').disabled=selected===records.length-1;
         $('navigation-hint').textContent=selected===records.length-1?'Ha llegado al último control disponible. Puede añadir un valor de prueba.':'Al avanzar verá únicamente la información disponible en cada control.';
@@ -663,6 +824,17 @@
       function next() { if(selected<records.length-1){selected++;render();} }
       $('previous').addEventListener('click',previous); $('mobile-previous').addEventListener('click',previous);
       $('next').addEventListener('click',next); $('mobile-next').addEventListener('click',next);
+      function setView(view, scroll=true) {
+        if (!['seguimiento','valoracion','controles','fuentes'].includes(view)) return;
+        document.body.dataset.view=view;
+        document.querySelectorAll('[data-app-view]').forEach(panel=>{ panel.hidden=panel.dataset.appView!==view; });
+        document.querySelectorAll('.app-tab').forEach(button=>{
+          if (button.dataset.view===view) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current');
+        });
+        if (scroll) window.scrollTo({top:0,behavior:'auto'});
+      }
+      document.querySelectorAll('.app-tab').forEach(button=>button.addEventListener('click',()=>setView(button.dataset.view)));
+      $('open-clinical').addEventListener('click',()=>{ $('clinical-context').open=true; $('clinical-context').scrollIntoView({block:'start',behavior:'smooth'}); });
       $('test-form').addEventListener('submit',event=>{
         event.preventDefault();
         const date=$('new-date').value, value=core.parseValue($('new-value').value), error=$('form-error');
@@ -672,14 +844,26 @@
         else if (records.some(r=>r.date===date)) message='Ya existe un control en esa fecha. Elija otra fecha.';
         else if (value===null) message='Introduzca una cifra entre 0 y 1.000.000 (límite técnico), por ejemplo 0,12. Los valores con «<» no son cifras exactas.';
         if(message){error.textContent=message;error.hidden=false;return;}
-        error.hidden=true; records.push({date,value,original:false}); sortRecords(); selected=records.findIndex(r=>r.date===date); $('new-value').value=''; $('new-date').value=''; render();
+        error.hidden=true; records.push({date,value,original:false}); sortRecords(); selected=records.findIndex(r=>r.date===date); $('new-value').value=''; $('new-date').value=''; render(); setView('seguimiento');
       });
       $('reset-tests').addEventListener('click',()=>{ const at=records[selected].date; records=records.filter(r=>r.original); selected=Math.max(0,records.reduce((last,r,i)=>r.date<=at?i:last,-1)); $('form-error').hidden=true; render(); });
-      for (const id of ['clinical-isup','clinical-baseline','clinical-baseline-date','clinical-date','clinical-order','clinical-second-date','clinical-prior-rt','clinical-stage','clinical-hormone','clinical-salvage','clinical-psadt']) {
+      for (const id of ['clinical-scenario','clinical-isup','clinical-baseline','clinical-baseline-date','clinical-persistence','clinical-date','clinical-order','clinical-second-date','clinical-life','clinical-prior-rt','clinical-other-treatment','clinical-phase','clinical-phase-date','clinical-phase-confirm','clinical-treatment-type','clinical-treatment-date','clinical-stage','clinical-node','clinical-imaging','clinical-pet','clinical-extent','clinical-timing','clinical-hormone','clinical-salvage','clinical-pelvic','clinical-psadt']) {
         $(id).addEventListener('input',render);
         $(id).addEventListener('change',render);
       }
       $('use-control-date').addEventListener('click',()=>{ $('clinical-date').value=records[selected].date; render(); });
+      let installPrompt=null;
+      window.addEventListener('beforeinstallprompt',event=>{ event.preventDefault(); installPrompt=event; $('install-native').hidden=false; });
+      $('install-button').addEventListener('click',()=>{ const dialog=$('install-dialog'); if (typeof dialog.showModal==='function') dialog.showModal(); else dialog.setAttribute('open',''); });
+      $('close-install').addEventListener('click',()=>{ const dialog=$('install-dialog'); if (typeof dialog.close==='function') dialog.close(); else dialog.removeAttribute('open'); });
+      $('install-native').addEventListener('click',async()=>{ if (!installPrompt) return; await installPrompt.prompt(); installPrompt=null; $('install-native').hidden=true; });
+      if ('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1')) {
+        window.addEventListener('load',()=>{
+          const timer=setTimeout(()=>{ $('offline-status').textContent='El acceso sin conexión todavía no está preparado. Mantenga la conexión o vuelva a abrir la aplicación.'; },12000);
+          navigator.serviceWorker.register('./service-worker.js').then(()=>navigator.serviceWorker.ready).then(()=>{ clearTimeout(timer); $('offline-status').textContent='Aplicación preparada para abrirse sin conexión en este navegador.'; }).catch(()=>{ clearTimeout(timer); $('offline-status').textContent='No se ha podido preparar el acceso sin conexión en este navegador.'; });
+        });
+      } else $('offline-status').textContent='El acceso instalable sin conexión no está disponible en esta apertura.';
+      setView('seguimiento',false);
       render();
     })();
   </script>

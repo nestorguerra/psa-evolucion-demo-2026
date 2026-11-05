@@ -12,7 +12,7 @@ vm.createContext(sandbox);
 vm.runInContext(match[1],sandbox,{timeout:1000,contextCodeGeneration:{strings:false,wasm:false}});
 const core=sandbox.PSA_DEMO;
 const rows=Array.from(core.ORIGINAL,r=>({...r}));
-const base={baseline:'case',isup:'4',assessmentDate:'',order:'unknown',priorRT:'unknown',stage:'unknown',hormone:'unknown',salvage:'unknown',manualDT:''};
+const base={scenario:'case',baseline:'case',isup:'4',assessmentDate:'',order:'unknown',life:'unknown',priorRT:'unknown',otherTreatment:'unknown',phase:'case',stage:'unknown',node:'unknown',imaging:'unknown',pet:'unknown',extent:'unknown',timing:'unknown',hormone:'unknown',salvage:'unknown',pelvic:'unknown',manualDT:''};
 const evaluate=(date,extra={},series=rows)=>core.evaluateClinical(series,date,{...base,...extra});
 
 // El dato de PSA indetectable del caso no se anticipa a enero de 2016.
@@ -74,10 +74,10 @@ assert.equal(core.formatDoubling(12.000001),'>12,0','El redondeo no oculta que s
 assert.equal(core.formatDoubling(9.000001),'>9,0','El redondeo no oculta que supera 9 meses');
 assert.equal(core.formatDoubling(0.000001),'<0,0001','El redondeo no muestra cero para un valor positivo');
 
-const first={assessmentDate:'2018-01-26',order:'first',priorRT:'no',stage:'m0',hormone:'sensitive',salvage:'yes'};
+const first={assessmentDate:'2018-01-26',order:'first',life:'over5',priorRT:'no',otherTreatment:'no',stage:'m0',node:'n0',imaging:'conventional',hormone:'sensitive',salvage:'yes'};
 let assessment=evaluate('2018-01-26',first);
 assert.equal(assessment.contextAvailable,true);
-assert.ok(Array.from(assessment.options.items).some(s=>s.includes('radioterapia de rescate')));
+assert.ok(Array.from(assessment.options.items).some(s=>s.includes('radioterapia como opción preferida')));
 assessment=evaluate('2018-01-26',{...first,assessmentDate:'2018-01-27'});
 assert.equal(assessment.contextAvailable,false);
 assert.equal(assessment.options.items.length,0,'No se usan decisiones futuras');
@@ -95,7 +95,7 @@ assessment=evaluate('2018-01-26',{...first,stage:'m1',hormone:'resistant'});
 assert.equal(assessment.options.title,'Requiere una vía específica');
 assert.equal(assessment.options.items.length,0,'La vía resistente no se inventa');
 
-const second={assessmentDate:'2018-03-01',order:'second',secondDate:'2018-02-20',priorRT:'yes',stage:'m0',hormone:'sensitive',salvage:'no',manualDT:'8'};
+const second={assessmentDate:'2018-03-01',order:'second',secondDate:'2018-02-20',priorRT:'yes',otherTreatment:'no',stage:'m0',node:'n0',imaging:'conventional',hormone:'sensitive',salvage:'no',pelvic:'no',manualDT:'8'};
 const extended=[...rows,{date:'2018-03-01',value:1.2}];
 assert.equal(evaluate('2018-03-01',{...second,secondDate:''},extended).options.title,'Falta confirmar la segunda recidiva');
 assert.ok(evaluate('2018-03-01',{...second,secondDate:'2016-01-20'},extended).errors.length>0);
@@ -112,14 +112,70 @@ const exactPSA=[...rows,{date:'2018-03-01',value:1}];
 const belowPSA=[...rows,{date:'2018-03-01',value:0.9999}];
 assert.ok(Array.from(evaluate('2018-03-01',second,exactPSA).options.items).some(s=>s.includes('EMBARK')));
 assert.ok(!Array.from(evaluate('2018-03-01',second,belowPSA).options.items).some(s=>s.includes('EMBARK')));
-const firstNotEligibleForRT={...second,order:'first',secondDate:'',priorRT:'no'};
+const firstNotEligibleForRT={...second,order:'first',secondDate:'',life:'over5',priorRT:'no'};
 assert.ok(Array.from(evaluate('2018-03-01',firstNotEligibleForRT,extended).options.items).some(s=>s.includes('EMBARK')),'La primera recidiva sin radioterapia previa también puede reunir criterios del ensayo');
 assert.equal(evaluate('2018-03-01',{...second,manualDT:''},extended).doubling.state,'phase','No se mezclan automáticamente fases con radioterapia previa');
 assessment=evaluate('2018-03-01',{...second,manualDT:'<8'},extended);
 assert.ok(assessment.errors.length>0);
 assert.equal(assessment.options.items.length,0,'Un dato inválido bloquea las opciones');
-assessment=evaluate('2018-03-01',{...second,stage:'m1',hormone:'sensitive'},extended);
+assessment=evaluate('2018-03-01',{...second,stage:'m1',extent:'poly',timing:'metachronous',hormone:'sensitive'},extended);
 assert.ok(Array.from(assessment.options.items).some(s=>s.includes('deprivación androgénica')));
 assert.equal(evaluate('2017-06-09',second,extended).options.items.length,0,'La valoración y las opciones futuras no se anticipan');
 
-console.log('Pruebas v0.1 superadas: cronología, señal, PSA-DT, límites EAU, datos ausentes y vías condicionales.');
+// La v0.2 no usa M0 para inferir N0 y mantiene separadas las modalidades de imagen.
+assert.equal(evaluate('2018-01-26',{...first,node:'unknown'}).options.items.length,0,'M0 sin N no selecciona una vía');
+assert.ok(evaluate('2018-01-26',{...first,node:'unknown'}).options.copy.includes('ganglionar'));
+assert.equal(evaluate('2018-01-26',{...first,life:'unknown'}).options.items.length,0,'La vía inicial exige esperanza de vida comunicada');
+assert.equal(evaluate('2018-01-26',{...first,life:'upto5'}).options.title,'NCCN PROS-9 · observación');
+assert.equal(evaluate('2018-01-26',{...first,life:'upto5',hormone:'resistant'}).options.title,'Requiere una vía específica');
+assert.equal(evaluate('2018-01-26',{...first,imaging:'psma',pet:'negative'}).options.title,'Imagen convencional pendiente');
+assert.equal(evaluate('2018-01-26',{...first,imaging:'both',pet:'suspected'}).options.title,'Estadificación pendiente');
+assert.equal(evaluate('2018-01-26',{...first,imaging:'both',pet:'regional',node:'n0'}).options.title,'Revise las imágenes');
+assert.equal(evaluate('2018-01-26',{...first,imaging:'both',pet:'distant',stage:'m0'}).options.title,'Revise las imágenes');
+assert.ok(evaluate('2018-01-26',{...first,node:'n1',extent:'oligo',timing:'metachronous'}).options.title.includes('PROS-13'));
+assert.equal(evaluate('2018-01-26',{...first,node:'n1',extent:'poly',timing:'metachronous'}).options.title,'Revise la extensión ganglionar');
+assert.ok(evaluate('2018-01-26',{...first,stage:'m1',extent:'oligo',timing:'metachronous'}).options.title.includes('PROS-13'));
+assert.ok(evaluate('2018-01-26',{...first,stage:'m1',extent:'oligo',timing:'synchronous'}).options.title.includes('PROS-14'));
+assert.ok(evaluate('2018-01-26',{...first,stage:'m1',extent:'poly',timing:'metachronous'}).options.title.includes('PROS-14'));
+assert.equal(evaluate('2018-01-26',{...first,stage:'m1',extent:'oligo',timing:'unknown'}).options.items.length,0);
+assert.equal(evaluate('2018-01-26',{...first,stage:'m1',extent:'unknown'}).options.items.length,0);
+
+// La persistencia comunicada no se deduce del PSA y tiene una vía inicial distinta del riesgo EAU.
+assessment=evaluate('2018-01-26',{...first,baseline:'persistent',persistence:'unknown'});
+assert.equal(assessment.options.title,'Falta confirmar la persistencia');
+assessment=evaluate('2018-01-26',{...first,baseline:'persistent',persistence:'yes'});
+assert.equal(assessment.signal.kind,'persistence');
+assert.equal(assessment.risk.state,'pending');
+assert.ok(assessment.options.title.includes('PROS-9'));
+
+// No se confunden la radioterapia de rescate, el tratamiento pélvico y la indicación AEMPS.
+assessment=evaluate('2018-03-01',{...second,pelvic:'unknown'},extended);
+assert.ok(!Array.from(assessment.options.items).some(s=>s.includes('categoría 1')));
+assert.ok(assessment.options.detail.includes('pelvis'));
+assessment=evaluate('2018-03-01',second,extended);
+assert.ok(Array.from(assessment.options.items).some(s=>s.includes('categoría 1')));
+assessment=evaluate('2018-03-01',firstNotEligibleForRT,extended);
+assert.ok(Array.from(assessment.options.items).some(s=>s.includes('no es una vía específica')));
+assert.ok(evaluate('2018-01-26').signal.copy.includes('09/10/2017'),'Se distingue la fecha comunicada de la señal anterior');
+assert.ok(!evaluate('2017-06-09').signal.copy.includes('09/10/2017'),'No se anticipa la fecha clínica futura');
+
+// Una serie con tratamientos solo se calcula cuando se declara y confirma su fase.
+const mixed=[...rows,{date:'2030-01-01',value:1.2},{date:'2030-03-01',value:0.1},{date:'2030-05-01',value:0.2},{date:'2030-07-01',value:0.4},{date:'2030-09-01',value:1.2}];
+const mixedContext={...second,scenario:'hypothetical',assessmentDate:'2030-09-01',secondDate:'2030-05-01',priorRT:'no',otherTreatment:'yes',manualDT:''};
+assert.equal(evaluate('2030-09-01',mixedContext,mixed).doubling.state,'phase','No se mezclan fases tras otros tratamientos');
+const selected={...mixedContext,phase:'selected',phaseDate:'2030-03-01',phaseConfirm:'yes',treatmentType:'hormonal',treatmentDate:'2030-02-01'};
+assessment=evaluate('2030-09-01',selected,mixed);
+assert.equal(assessment.doubling.state,'estimated');
+assert.ok(assessment.doubling.value>1.6 && assessment.doubling.value<1.9,'Solo se calcula la fase desde marzo');
+assert.equal(evaluate('2030-09-01',{...selected,phaseConfirm:'unknown'},mixed).doubling.state,'phase');
+assert.equal(evaluate('2030-09-01',{...selected,treatmentDate:'2030-04-01'},mixed).doubling.state,'phase');
+assert.equal(evaluate('2030-09-01',{...selected,treatmentDate:'2030-03-01'},mixed).doubling.state,'phase','El mismo día no aclara si la muestra fue anterior al cambio');
+assert.equal(evaluate('2030-09-01',{...selected,phaseDate:'2030-10-01'},mixed).doubling.state,'phase');
+assert.equal(evaluate('2030-09-01',{...selected,otherTreatment:'unknown'},mixed).doubling.state,'phase');
+assert.equal(evaluate('2030-09-01',{...mixedContext,manualDT:'8'},mixed).doubling.state,'reported','Se puede aportar un valor validado');
+assert.equal(evaluate('2018-03-01',{...second,priorRT:'no',manualDT:''},extended).doubling.state,'phase','Los controles añadidos necesitan fase confirmada');
+assert.ok(evaluate('2024-11-02',{...first,assessmentDate:'2024-11-02',priorRT:'no'}).errors.some(s=>s.includes('radioterapia')),'No se contradice la radioterapia del caso original');
+assert.ok(evaluate('2024-11-02',{...first,assessmentDate:'2024-11-02',otherTreatment:'no'}).errors.some(s=>s.includes('hormonal')),'No se omite el tratamiento hormonal del caso original');
+assert.equal(evaluate('2024-11-02',{...first,scenario:'hypothetical',assessmentDate:'2024-11-02'}).errors.length,0,'Un escenario alternativo se identifica expresamente');
+
+console.log('Pruebas clínicas v0.2 superadas: cronología, fase, estadificación, persistencia y vías condicionadas.');
