@@ -56,6 +56,9 @@ assert.equal(unsorted.map(r=>r.date).join('|'),originalOrder,'El análisis no de
 assert.equal(core.parseValue('0,12'),0.12);
 assert.equal(core.parseValue('0.0123'),0.0123);
 assert.equal(core.parseValue('0'),0);
+assert.equal(core.parseValue('1000000'),1000000,'Límite técnico admitido');
+assert.equal(core.parseValue('1000001'),null,'Se rechaza un valor fuera del límite técnico');
+assert.equal(core.parseValue('9'.repeat(309)),null,'Se rechazan valores que desbordan la gráfica');
 for(const bad of ['','-1','<0,1','0,1,2','1e2','Infinity','abc']) assert.equal(core.parseValue(bad),null,`Debe rechazar ${bad}`);
 assert.equal(core.validDate('2016-02-29'),true);
 assert.equal(core.validDate('2016-02-30'),false);

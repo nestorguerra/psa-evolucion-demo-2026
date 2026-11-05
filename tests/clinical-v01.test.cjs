@@ -1,0 +1,125 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+const match=html.match(/<script id="psa-core">\s*([\s\S]*?)<\/script>/);
+assert.ok(match,'No se encontró la lógica del caso');
+const sandbox={};
+vm.createContext(sandbox);
+vm.runInContext(match[1],sandbox,{timeout:1000,contextCodeGeneration:{strings:false,wasm:false}});
+const core=sandbox.PSA_DEMO;
+const rows=Array.from(core.ORIGINAL,r=>({...r}));
+const base={baseline:'case',isup:'4',assessmentDate:'',order:'unknown',priorRT:'unknown',stage:'unknown',hormone:'unknown',salvage:'unknown',manualDT:''};
+const evaluate=(date,extra={},series=rows)=>core.evaluateClinical(series,date,{...base,...extra});
+
+// El dato de PSA indetectable del caso no se anticipa a enero de 2016.
+assert.equal(evaluate('2016-01-19').signal.title,'Falta el dato basal');
+assert.equal(evaluate('2016-01-19').signal.possible,false);
+assert.equal(evaluate('2016-07-21').signal.possible,false);
+assert.equal(evaluate('2016-11-09').signal.possible,false,'Una sola subida no confirma la señal');
+assert.equal(evaluate('2017-06-09').signal.possible,true,'Dos aumentos consecutivos activan una señal para revisión');
+assert.equal(evaluate('2017-06-09').signal.reason,'rises');
+assert.equal(evaluate('2018-01-26').signal.triggerDate,'2017-06-09','Se conserva la fecha de la primera señal histórica');
+assert.ok(evaluate('2018-01-26').signal.copy.includes('En el historial'));
+assert.equal(evaluate('2017-06-09').risk.state,'high','ISUP 4 cumple uno de los criterios altos');
+assert.equal(evaluate('2017-06-09').options.items.length,0,'No hay opciones sin contexto clínico');
+
+const atBoundary=[{date:'2016-03-30',value:0.01},{date:'2016-07-30',value:0.1}];
+const aboveBoundary=[{date:'2016-03-30',value:0.01},{date:'2016-07-30',value:0.1001}];
+assert.equal(evaluate('2016-07-30',{},atBoundary).signal.possible,false,'0,1 exacto no supera el umbral');
+assert.equal(evaluate('2016-07-30',{},aboveBoundary).signal.reason,'threshold','Más de 0,1 tras el basal activa una señal');
+assert.equal(evaluate('2018-01-26',{baseline:'unknown'}).signal.possible,false);
+assert.equal(evaluate('2016-11-09',{baseline:'confirmed',baselineDate:'2017-01-01'}).signal.possible,false,'No se usa un basal futuro');
+assert.equal(evaluate('2018-01-26',{baseline:'confirmed',baselineDate:'2015-01-01'}).errors.length>0,true);
+const badBaseline=[{date:'2016-03-30',value:0.3},{date:'2016-08-30',value:0.4}];
+assert.equal(evaluate('2016-08-30',{},badBaseline).signal.title,'Revise el dato basal');
+assert.equal(evaluate('2018-01-26',{baseline:'persistent'}).signal.possible,false);
+assert.ok(evaluate('2018-01-26',{baseline:'persistent'}).errors.length>0);
+assert.equal(evaluate('2018-01-26',{baseline:'persistent',assessmentDate:'2018-01-26'}).signal.title,'Persistencia comunicada');
+
+// El cálculo requiere valores positivos, al menos tres en 12 meses y separación suficiente.
+const growing=[{date:'2024-01-01',value:1},{date:'2024-04-01',value:2},{date:'2024-07-01',value:4}];
+const dt=core.estimateDoubling(growing,'2024-07-01','2024-01-01');
+assert.equal(dt.state,'estimated');
+assert.ok(dt.value>2.9 && dt.value<3.1,'Duplicación aproximada cada tres meses');
+assert.equal(core.estimateDoubling(growing.slice(0,2),'2024-07-01','2024-01-01').state,'insufficient');
+assert.equal(core.estimateDoubling(growing,'2024-04-01','2024-01-01').state,'insufficient','Se excluyen valores futuros');
+assert.equal(core.estimateDoubling([{date:'2024-01-01',value:1},{date:'2024-01-20',value:2},{date:'2024-07-01',value:4}],'2024-07-01','2024-01-01').state,'interval');
+assert.equal(core.estimateDoubling([{date:'2024-01-01',value:4},{date:'2024-04-01',value:2},{date:'2024-07-01',value:1}],'2024-07-01','2024-01-01').state,'nonrising');
+assert.equal(core.estimateDoubling([{date:'2024-01-01',value:0},{date:'2024-04-01',value:2},{date:'2024-07-01',value:4}],'2024-07-01','2024-01-01').state,'insufficient');
+const withZero=[{date:'2024-01-01',value:0},{date:'2024-02-01',value:1},{date:'2024-04-01',value:2},{date:'2024-07-01',value:4}];
+assert.equal(core.estimateDoubling(withZero,'2024-07-01','2024-01-01').excludedZeros,1,'La estimación declara la exclusión de ceros');
+const old=[{date:'2022-01-01',value:1},{date:'2023-04-01',value:2},{date:'2024-07-01',value:4}];
+assert.equal(core.estimateDoubling(old,'2024-07-01','2022-01-01').state,'insufficient','No se usan valores de más de 12 meses');
+
+// EAU tras cirugía: alto si cualquiera de los criterios es alto; bajo exige ambos bajos.
+const positive={possible:true};
+const unknown={value:null}, slow={value:12.0001}, limit={value:12}, fast={value:8};
+assert.equal(core.eauRisk(positive,'4',unknown,false).state,'high');
+assert.equal(core.eauRisk(positive,'unknown',fast,false).state,'high');
+assert.equal(core.eauRisk(positive,'3',limit,false).state,'high','Doce meses pertenece al grupo alto');
+assert.equal(core.eauRisk(positive,'3',slow,false).state,'low');
+assert.equal(core.eauRisk(positive,'unknown',slow,false).state,'pending');
+assert.equal(core.eauRisk(positive,'3',unknown,false).state,'pending');
+assert.equal(core.eauRisk({possible:false},'4',fast,false).state,'pending','El riesgo no se aplica antes de la señal');
+assert.equal(core.formatDoubling(12.0001),'12,0001','La presentación conserva el límite EAU');
+assert.equal(core.formatDoubling(9.0001),'9,0001','La presentación conserva el límite EMBARK');
+assert.equal(core.formatDoubling(12.04),'12,04','Se muestran decimales cuando un redondeo ocultaría el límite EAU');
+assert.equal(core.formatDoubling(9.04),'9,04','Se muestran decimales cuando un redondeo ocultaría el límite EMBARK');
+assert.equal(core.formatDoubling(3.23),'3,2','Se evita una precisión innecesaria lejos de los límites');
+assert.equal(core.formatDoubling(12.000001),'>12,0','El redondeo no oculta que supera 12 meses');
+assert.equal(core.formatDoubling(9.000001),'>9,0','El redondeo no oculta que supera 9 meses');
+assert.equal(core.formatDoubling(0.000001),'<0,0001','El redondeo no muestra cero para un valor positivo');
+
+const first={assessmentDate:'2018-01-26',order:'first',priorRT:'no',stage:'m0',hormone:'sensitive',salvage:'yes'};
+let assessment=evaluate('2018-01-26',first);
+assert.equal(assessment.contextAvailable,true);
+assert.ok(Array.from(assessment.options.items).some(s=>s.includes('radioterapia de rescate')));
+assessment=evaluate('2018-01-26',{...first,assessmentDate:'2018-01-27'});
+assert.equal(assessment.contextAvailable,false);
+assert.equal(assessment.options.items.length,0,'No se usan decisiones futuras');
+assessment=evaluate('2018-01-26',{...first,assessmentDate:'2017-10-09',manualDT:'8'});
+assert.equal(assessment.doubling.state,'stale');
+assert.equal(assessment.options.title,'Actualice la valoración');
+assert.equal(assessment.options.items.length,0,'Una valoración anterior no se presenta como actual');
+assert.ok(evaluate('2018-01-26',{...first,assessmentDate:'2016-01-20'}).errors.length>0,'El contexto no puede ser anterior al basal');
+assessment=evaluate('2018-01-26',{...first,stage:'uncertain'});
+assert.equal(assessment.options.title,'Estadificación pendiente');
+assert.equal(assessment.options.items.length,0,'Una lesión dudosa no se convierte en M1');
+assessment=evaluate('2018-01-26',{...first,stage:'m1',hormone:'unknown'});
+assert.equal(assessment.options.items.length,0,'M1 sin estado hormonal no selecciona tratamiento');
+assessment=evaluate('2018-01-26',{...first,stage:'m1',hormone:'resistant'});
+assert.equal(assessment.options.title,'Requiere una vía específica');
+assert.equal(assessment.options.items.length,0,'La vía resistente no se inventa');
+
+const second={assessmentDate:'2018-03-01',order:'second',secondDate:'2018-02-20',priorRT:'yes',stage:'m0',hormone:'sensitive',salvage:'no',manualDT:'8'};
+const extended=[...rows,{date:'2018-03-01',value:1.2}];
+assert.equal(evaluate('2018-03-01',{...second,secondDate:''},extended).options.title,'Falta confirmar la segunda recidiva');
+assert.ok(evaluate('2018-03-01',{...second,secondDate:'2016-01-20'},extended).errors.length>0);
+assert.ok(evaluate('2018-03-01',{...second,secondDate:'2018-03-02'},extended).errors.length>0);
+assessment=evaluate('2018-03-01',second,extended);
+assert.equal(assessment.secondConfirmed,true);
+assert.equal(assessment.doubling.state,'reported');
+assert.ok(Array.from(assessment.options.items).some(s=>s.includes('EMBARK')));
+assert.ok(assessment.risk.copy.includes('segunda recidiva'));
+assert.ok(Array.from(evaluate('2018-03-01',{...second,manualDT:'9'},extended).options.items).some(s=>s.includes('EMBARK')));
+assert.ok(!Array.from(evaluate('2018-03-01',{...second,manualDT:'9,0001'},extended).options.items).some(s=>s.includes('EMBARK')));
+assert.ok(!Array.from(evaluate('2018-03-01',{...second,salvage:'yes'},extended).options.items).some(s=>s.includes('EMBARK')));
+const exactPSA=[...rows,{date:'2018-03-01',value:1}];
+const belowPSA=[...rows,{date:'2018-03-01',value:0.9999}];
+assert.ok(Array.from(evaluate('2018-03-01',second,exactPSA).options.items).some(s=>s.includes('EMBARK')));
+assert.ok(!Array.from(evaluate('2018-03-01',second,belowPSA).options.items).some(s=>s.includes('EMBARK')));
+const firstNotEligibleForRT={...second,order:'first',secondDate:'',priorRT:'no'};
+assert.ok(Array.from(evaluate('2018-03-01',firstNotEligibleForRT,extended).options.items).some(s=>s.includes('EMBARK')),'La primera recidiva sin radioterapia previa también puede reunir criterios del ensayo');
+assert.equal(evaluate('2018-03-01',{...second,manualDT:''},extended).doubling.state,'phase','No se mezclan automáticamente fases con radioterapia previa');
+assessment=evaluate('2018-03-01',{...second,manualDT:'<8'},extended);
+assert.ok(assessment.errors.length>0);
+assert.equal(assessment.options.items.length,0,'Un dato inválido bloquea las opciones');
+assessment=evaluate('2018-03-01',{...second,stage:'m1',hormone:'sensitive'},extended);
+assert.ok(Array.from(assessment.options.items).some(s=>s.includes('deprivación androgénica')));
+assert.equal(evaluate('2017-06-09',second,extended).options.items.length,0,'La valoración y las opciones futuras no se anticipan');
+
+console.log('Pruebas v0.1 superadas: cronología, señal, PSA-DT, límites EAU, datos ausentes y vías condicionales.');

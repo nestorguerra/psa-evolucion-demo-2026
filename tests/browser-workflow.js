@@ -34,6 +34,10 @@ async page => {
   await page.locator('#test-form button[type="submit"]').click();
   equal(await page.locator('#form-error').isVisible(),true,'Rechazo de límite no exacto');
   equal(await value(),'0,02','No registrar dato inválido');
+  await page.locator('#new-value').fill('1000001');
+  await page.locator('#test-form button[type="submit"]').click();
+  equal(await page.locator('#form-error').isVisible(),true,'Rechazo de cifras fuera del límite técnico');
+  equal(await value(),'0,02','No registrar una cifra fuera de rango');
   await page.locator('#new-value').fill('0,03');
   await page.locator('#test-form button[type="submit"]').click();
   equal(await value(),'0,03','Valor ficticio añadido');
